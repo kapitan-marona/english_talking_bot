@@ -26,4 +26,12 @@ if __name__ == "__main__":
     app.add_handler(MessageHandler(filters.VOICE, voice_handler))
 
     print("Бот запущен...")
-    app.run_polling()
+
+    PORT = int(os.environ.get("PORT", 8443))
+    APP_URL = os.environ.get("RENDER_EXTERNAL_URL")
+
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=PORT,
+        webhook_url=f"{APP_URL}/webhook"
+    )
