@@ -31,6 +31,7 @@ if __name__ == "__main__":
     PORT = int(os.environ.get("PORT", 8443))
     APP_URL = os.environ.get("RENDER_EXTERNAL_URL")
 
+    print(f"Using webhook URL: {APP_URL}/webhook")
     app.run_webhook(
         listen="0.0.0.0",
         port=PORT,
