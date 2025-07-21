@@ -9,31 +9,29 @@ from telegram.ext import (
 from config import TELEGRAM_TOKEN
 from handlers import start, lang_choice, level_choice, style_choice, chat, cancel, voice_handler, LANG, LEVEL, STYLE
 
-if __name__ == "__main__":
-    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+PORT = int(os.environ.get("PORT", 8443))
+APP_URL = os.environ.get("RENDER_EXTERNAL_URL")  # должен быть без слэша
 
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler("start", start)],
-        states={
-            LANG: [MessageHandler(filters.TEXT & ~filters.COMMAND, lang_choice)],
-            LEVEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, level_choice)],
-            STYLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, style_choice)],
-        },
-        fallbacks=[CommandHandler("cancel", cancel)],
-    )
+app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-    app.add_handler(conv_handler)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
-    app.add_handler(MessageHandler(filters.VOICE, voice_handler))
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler("start", start)],
+    states={
+        LANG: [MessageHandler(filters.TEXT & ~filters.COMMAND, lang_choice)],
+        LEVEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, level_choice)],
+        STYLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, style_choice)],
+    },
+    fallbacks=[CommandHandler("cancel", cancel)],
+)
 
-    print("Бот запущен...")
+app.add_handler(conv_handler)
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+app.add_handler(MessageHandler(filters.VOICE, voice_handler))
 
-    PORT = int(os.environ.get("PORT", 8443))
-    APP_URL = os.environ.get("RENDER_EXTERNAL_URL")
+print(f"📡 Webhook listening on: {APP_URL}/webhook")
 
-    print(f"Using webhook URL: {APP_URL}/webhook")
-    app.run_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        webhook_url=f"{APP_URL}/webhook"
-    )
+app.run_webhook(
+    listen="0.0.0.0",
+    port=PORT,
+    webhook_url=f"{APP_URL}/webhook"
+)
