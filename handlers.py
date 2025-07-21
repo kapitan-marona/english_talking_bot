@@ -1,8 +1,10 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
 from telegram.ext import ConversationHandler, ContextTypes
 from config import client
-from gtts import gTTS
+from google.cloud import texttospeech
 import tempfile
+import os
+import base64
 import subprocess
 
 LANG, LEVEL, STYLE = range(3)
@@ -23,6 +25,23 @@ style_keyboard_ar = [["عامي", "رسمي"]]
 
 lang_markup = ReplyKeyboardMarkup(lang_keyboard, one_time_keyboard=True, resize_keyboard=True)
 level_markup = ReplyKeyboardMarkup(level_keyboard, one_time_keyboard=True, resize_keyboard=True)
+
+# Инициализация Google TTS клиента через Base64 ключ из переменной окружения
+def init_google_tts_client():
+    encoded_key = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_BASE64")
+    if not encoded_key:
+        raise EnvironmentError("Environment variable GOOGLE_APPLICATION_CREDENTIALS_BASE64 is not set")
+    json_key = base64.b64decode(encoded_key)
+    # Временный файл с ключом
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmpfile:
+        tmpfile.write(json_key)
+        tmpfile_path = tmpfile.name
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = tmpfile_path
+    client = texttospeech.TextToSpeechClient()
+    return client, tmpfile_path
+
+google_tts_client, tmp_key_path = init_google_tts_client()
+
 
 def generate_system_prompt(language, level, style):
     base = "You are an English language assistant helping a user practice English."
@@ -135,7 +154,6 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return ConversationHandler.END
 
 
-
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip()
 
@@ -190,13 +208,10 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.user_data.get("voice_mode"):
             # Голосовой ответ с кнопкой "⌨️ Text mode"
             try:
-                await speak_and_reply(answer, update)
+                await speak_and_reply_google_tts(answer, update)
             except Exception:
                 await update.message.reply_text(answer)
-            await update.message.reply_text(
-                "Хочешь вернуться в текстовый режим?",
-                reply_markup=text_mode_button
-            )
+            # Убрали вопрос "Хочешь вернуться в текстовый режим?"
         else:
             # Текстовый ответ, показываем кнопку голосового режима, если ещё не показывали
             if show_voice_button:
@@ -213,15 +228,34 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-async def speak_and_reply(text: str, update: Update):
+async def speak_and_reply_google_tts(text: str, update: Update):
     try:
-        # Генерируем аудиофайл
-        tts = gTTS(text=text, lang="en")
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+
+        # Настройки голоса и аудио
+        voice = texttospeech.VoiceSelectionParams(
+            language_code="en-US",
+            ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
+        )
+        audio_config = texttospeech.AudioConfig(
+            audio_encoding=texttospeech.AudioEncoding.MP3
+        )
+
+        response = google_tts_client.synthesize_speech(
+            input=synthesis_input,
+            voice=voice,
+            audio_config=audio_config
+        )
+
         with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmpfile:
-            tts.save(tmpfile.name)
-            # Отправляем как голосовое сообщение
-            with open(tmpfile.name, "rb") as voice_file:
-                await update.message.reply_voice(voice=voice_file)
+            tmpfile.write(response.audio_content)
+            tmpfile_path = tmpfile.name
+
+        with open(tmpfile_path, "rb") as voice_file:
+            await update.message.reply_voice(voice=voice_file)
+
+        os.remove(tmpfile_path)
+
     except Exception as e:
         await update.message.reply_text(f"Ошибка генерации голоса: {e}")
 
@@ -246,7 +280,6 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     response_format="text"
                 )
 
-            # Класс-обёртка, имитирующий текстовое сообщение
             class FakeMessage:
                 def __init__(self, text, original):
                     self.text = text
@@ -262,7 +295,6 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 async def reply_voice(self, *args, **kwargs):
                     return await self._original.reply_voice(*args, **kwargs)
 
-            # Создаём поддельное сообщение и update
             fake_message = FakeMessage(transcript, update.message)
             fake_update = Update(update.update_id, message=fake_message)
 
@@ -270,3 +302,4 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         except Exception as e:
             await update.message.reply_text(f"Ошибка распознавания речи: {e}")
+
