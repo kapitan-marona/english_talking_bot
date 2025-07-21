@@ -21,6 +21,7 @@ gtts==2.3.0
 python-telegram-bot[webhooks]
 aiohttp
 fastapi
-uvicorn
-python-telegram-bot==22.2
+uvicorn[standard]
+
+
 
