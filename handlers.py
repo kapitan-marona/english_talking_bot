@@ -235,6 +235,7 @@ async def speak_and_reply_google_tts(text: str, update: Update):
         # Настройки голоса и аудио
         voice = texttospeech.VoiceSelectionParams(
             language_code="en-US",
+            name="en-US-Wavenet-D",
             ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
         )
         audio_config = texttospeech.AudioConfig(
