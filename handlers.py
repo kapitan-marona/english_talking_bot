@@ -68,11 +68,13 @@ def generate_system_prompt(language, level, style):
     )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data.clear()  # очищаем всё
     await update.message.reply_text(
         "Выбери язык интерфейса /اختر لغة الواجهة:",
         reply_markup=lang_markup
     )
     return LANG
+
 
 async def lang_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     lang = update.message.text
