@@ -1,4 +1,11 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
+from telegram.ext import ConversationHandler, ContextTypes
+from config import client
+from gtts import gTTS
+import tempfile
+import subprocess
+
+LANG, LEVEL, STYLE = range(3)
 
 voice_mode_button = ReplyKeyboardMarkup(
     [[KeyboardButton("🗣️ Voice mode")]],
@@ -8,11 +15,6 @@ text_mode_button = ReplyKeyboardMarkup(
     [[KeyboardButton("⌨️ Text mode")]],
     resize_keyboard=True
 )
-
-from telegram.ext import ConversationHandler, ContextTypes
-from config import client
-
-LANG, LEVEL, STYLE = range(3)
 
 lang_keyboard = [["Русский", "عربي"]]
 level_keyboard = [["A1-A2", "B1-B2"]]
@@ -67,6 +69,7 @@ def generate_system_prompt(language, level, style):
         "Ask follow-up questions to keep the conversation going."
     )
 
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()  # очищаем всё
     await update.message.reply_text(
@@ -91,6 +94,7 @@ async def lang_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     )
     return LEVEL
 
+
 async def level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["level"] = update.message.text
 
@@ -100,6 +104,7 @@ async def level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     )
     return STYLE
 
+
 async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     style = update.message.text
     context.user_data["style"] = style
@@ -107,9 +112,9 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     language = context.user_data["language"]
 
     welcome_msg = (
-        "Отлично, будем болтать, как старые друзья! 😎 О чём хочешь поговорить на английском?"
+        "Отлично, давай просто поболтаем! 😎 С чего хочешь начать?"
         if language == "Русский" and style.lower() == "разговорный" else
-        "Отлично, будем общаться в деловом стиле. С какой темы начнём беседу на английском?"
+        "Отлично, будем общаться в деловом стиле. С чего начнем?"
         if language == "Русский" else
         "تمام! هنتكلم بأسلوب عامي ومرِح. 😎 تحب نتكلم عن ايه بالإنجليزي؟"
         if style.lower() == "عامي" else
@@ -117,6 +122,7 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     )
 
     context.user_data["voice_mode"] = False  # режим по умолчанию — текст
+    context.user_data["mode_button_shown"] = False  # кнопка голосового режима ещё не показана
 
     await update.message.reply_text(welcome_msg)
 
@@ -132,17 +138,32 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # Переключение режима
     if user_text == "🗣️ Voice mode":
         context.user_data["voice_mode"] = True
-        await update.message.reply_text("Voice mode enabled. I will respond with voice.", reply_markup=text_mode_button)
+        await update.message.reply_text(
+            "Voice mode enabled. I will respond with voice.",
+            reply_markup=text_mode_button
+        )
         return
     elif user_text == "⌨️ Text mode":
         context.user_data["voice_mode"] = False
-        await update.message.reply_text("Text mode enabled. I will respond with text.", reply_markup=voice_mode_button)
+        await update.message.reply_text(
+            "Text mode enabled. I will respond with text.",
+            reply_markup=voice_mode_button
+        )
         return
 
     # Проверка на наличие system_prompt
     if "system_prompt" not in context.user_data:
-        await update.message.reply_text("Пожалуйста, начни сначала с команды / يرجى البدء بالأمر /start.")
+        await update.message.reply_text(
+            "Пожалуйста, начни сначала с команды / يرجى البدء بالأمر /start."
+        )
         return
+
+    # Добавляем кнопку голосового режима после первого ответа пользователя в текстовом режиме
+    if not context.user_data.get("voice_mode") and not context.user_data.get("mode_button_shown", False):
+        context.user_data["mode_button_shown"] = True
+        show_voice_button = True
+    else:
+        show_voice_button = False
 
     # Сбор сообщений
     system_prompt = context.user_data["system_prompt"]
@@ -163,38 +184,30 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Отправка ответа — голосом или текстом
         if context.user_data.get("voice_mode"):
-    # Голосовой ответ с кнопкой "⌨️ Text mode"
-    try:
-        await speak_and_reply(answer, update)
-    except Exception:
-        await update.message.reply_text(answer)
-    await update.message.reply_text("Хочешь вернуться в текстовый режим?", reply_markup=text_mode_button)
-else:
-    # Первый раз показываем кнопку voice mode
-    if "mode_button_shown" not in context.user_data:
-        context.user_data["mode_button_shown"] = True
-        await update.message.reply_text(answer, reply_markup=voice_mode_button)
-    else:
-        await update.message.reply_text(answer)
-
+            # Голосовой ответ с кнопкой "⌨️ Text mode"
+            try:
+                await speak_and_reply(answer, update)
+            except Exception:
+                await update.message.reply_text(answer)
+            await update.message.reply_text(
+                "Хочешь вернуться в текстовый режим?",
+                reply_markup=text_mode_button
+            )
+        else:
+            # Текстовый ответ, показываем кнопку голосового режима, если ещё не показывали
+            if show_voice_button:
+                await update.message.reply_text(answer, reply_markup=voice_mode_button)
+            else:
+                await update.message.reply_text(answer)
 
     except Exception as e:
         await update.message.reply_text(f"Ошибка генерации ответа: {e}")
-
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Отмена.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-
-import tempfile
-import subprocess
-from telegram import Update
-from telegram.ext import ContextTypes
-from config import client
-from gtts import gTTS
-import tempfile
 
 async def speak_and_reply(text: str, update: Update):
     try:
@@ -253,5 +266,3 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         except Exception as e:
             await update.message.reply_text(f"Ошибка распознавания речи: {e}")
-
-
