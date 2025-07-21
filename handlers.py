@@ -122,18 +122,18 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     )
 
     context.user_data["voice_mode"] = False  # режим по умолчанию — текст
-context.user_data["mode_button_shown"] = False  # кнопка голосового режима ещё не показана
+    context.user_data["mode_button_shown"] = False  # кнопка голосового режима ещё не показана
 
-await update.message.reply_text(
-    welcome_msg,
-    reply_markup=ReplyKeyboardRemove()  # ⬅️ удаляем клавиатуру с кнопками стиля
-)
+    await update.message.reply_text(
+        welcome_msg,
+        reply_markup=ReplyKeyboardRemove()  # ⬅️ удаляем клавиатуру с кнопками стиля
+    )
 
-system_prompt = generate_system_prompt(language, context.user_data["level"], style)
-context.user_data["system_prompt"] = system_prompt
-
+    system_prompt = generate_system_prompt(language, context.user_data["level"], style)
+    context.user_data["system_prompt"] = system_prompt
 
     return ConversationHandler.END
+
 
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
