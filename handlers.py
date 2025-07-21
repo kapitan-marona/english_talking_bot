@@ -114,7 +114,7 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     welcome_msg = (
         "Отлично, давай просто поболтаем! 😎 С чего хочешь начать?"
         if language == "Русский" and style.lower() == "разговорный" else
-        "Отлично, будем общаться в деловом стиле. С чего начнем?"
+        "Круто! Намечается деловой разговор. С чего начнем?"
         if language == "Русский" else
         "تمام! هنتكلم بأسلوب عامي ومرِح. 😎 تحب نتكلم عن ايه بالإنجليزي؟"
         if style.lower() == "عامي" else
@@ -139,14 +139,14 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if user_text == "🗣️ Voice mode":
         context.user_data["voice_mode"] = True
         await update.message.reply_text(
-            "Voice mode enabled. I will respond with voice.",
+            "Voice mode enabled. Talk to me! I will respond with voice.",
             reply_markup=text_mode_button
         )
         return
     elif user_text == "⌨️ Text mode":
         context.user_data["voice_mode"] = False
         await update.message.reply_text(
-            "Text mode enabled. I will respond with text.",
+            "Text mode enabled. Talk to me! I will respond with text.",
             reply_markup=voice_mode_button
         )
         return
