@@ -20,3 +20,7 @@ typing_extensions==4.14.1
 gtts==2.3.0
 python-telegram-bot[webhooks]
 aiohttp
+fastapi
+uvicorn
+python-telegram-bot==20.7
+
