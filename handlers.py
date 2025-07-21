@@ -118,10 +118,7 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
     context.user_data["voice_mode"] = False  # режим по умолчанию — текст
 
-    await update.message.reply_text(
-        welcome_msg + "\n\nChoose a mode 👇 / اختر وضع المحادثة:",
-        reply_markup=voice_mode_button
-    )
+    await update.message.reply_text(welcome_msg)
 
     system_prompt = generate_system_prompt(language, context.user_data["level"], style)
     context.user_data["system_prompt"] = system_prompt
@@ -166,12 +163,20 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Отправка ответа — голосом или текстом
         if context.user_data.get("voice_mode"):
-            try:
-                await speak_and_reply(answer, update)
-            except Exception:
-                await update.message.reply_text(answer)
-        else:
-            await update.message.reply_text(answer, reply_markup=voice_mode_button)
+    # Голосовой ответ с кнопкой "⌨️ Text mode"
+    try:
+        await speak_and_reply(answer, update)
+    except Exception:
+        await update.message.reply_text(answer)
+    await update.message.reply_text("Хочешь вернуться в текстовый режим?", reply_markup=text_mode_button)
+else:
+    # Первый раз показываем кнопку voice mode
+    if "mode_button_shown" not in context.user_data:
+        context.user_data["mode_button_shown"] = True
+        await update.message.reply_text(answer, reply_markup=voice_mode_button)
+    else:
+        await update.message.reply_text(answer)
+
 
     except Exception as e:
         await update.message.reply_text(f"Ошибка генерации ответа: {e}")
