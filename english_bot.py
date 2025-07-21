@@ -1,5 +1,6 @@
 import os
-from aiohttp import web
+from fastapi import FastAPI, Request
+from telegram import Update
 from telegram.ext import (
     ApplicationBuilder,
     CommandHandler,
@@ -8,16 +9,17 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
+
 from config import TELEGRAM_TOKEN
-from handlers import start, lang_choice, level_choice, style_choice, chat, cancel, voice_handler, LANG, LEVEL, STYLE
+from handlers import (
+    start, lang_choice, level_choice, style_choice,
+    chat, cancel, voice_handler, LANG, LEVEL, STYLE
+)
 
-PORT = int(os.environ.get("PORT", 8443))
-APP_URL = os.environ.get("RENDER_EXTERNAL_URL")
+app = FastAPI()
+bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-# Создаем Telegram приложение
-app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-
-# Conversation handler
+# Диалоговый обработчик
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
@@ -28,29 +30,16 @@ conv_handler = ConversationHandler(
     fallbacks=[CommandHandler("cancel", cancel)],
 )
 
-# Обработчики
-app.add_handler(conv_handler)
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
-app.add_handler(MessageHandler(filters.VOICE, voice_handler))
+# Добавляем все хендлеры
+bot_app.add_handler(conv_handler)
+bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+bot_app.add_handler(MessageHandler(filters.VOICE, voice_handler))
 
+# Обработка POST-запросов от Telegram
+@app.post("/webhook")
+async def telegram_webhook(req: Request):
+    data = await req.json()
+    update = Update.de_json(data, bot_app.bot)
+    await bot_app.process_update(update)
+    return {"ok": True}
 
-# Aiohttp webhook handler
-async def handle_webhook(request: web.Request) -> web.Response:
-    await app.update_queue.put(await request.json())
-    return web.Response(text="OK")
-
-
-# Aiohttp сервер
-async def main():
-    app_ = web.Application()
-    app_.add_routes([web.post("/webhook", handle_webhook)])
-
-    await app.initialize()
-    await app.start()
-    await web._run_app(app_, host="0.0.0.0", port=PORT)
-    await app.stop()
-    await app.shutdown()
-    await app.post_shutdown()
-
-import asyncio
-asyncio.run(main())
