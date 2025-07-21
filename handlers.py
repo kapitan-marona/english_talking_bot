@@ -117,15 +117,17 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     )
 
     context.user_data["voice_mode"] = False  # режим по умолчанию — текст
-await update.message.reply_text(
-    welcome_msg + "\n\nChoose a mode 👇 / اختر وضع المحادثة:",
-    reply_markup=voice_mode_button
-)
+
+    await update.message.reply_text(
+        welcome_msg + "\n\nChoose a mode 👇 / اختر وضع المحادثة:",
+        reply_markup=voice_mode_button
+    )
 
     system_prompt = generate_system_prompt(language, context.user_data["level"], style)
     context.user_data["system_prompt"] = system_prompt
 
     return ConversationHandler.END
+
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip()
