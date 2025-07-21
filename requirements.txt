@@ -22,6 +22,7 @@ python-telegram-bot[webhooks]
 aiohttp
 fastapi
 uvicorn[standard]
+google-cloud-texttospeech
 
 
 
