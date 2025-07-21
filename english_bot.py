@@ -17,6 +17,11 @@ from handlers import (
 
 app = FastAPI()
 
+@app.get("/")
+async def root():
+    return {"message": "English Talking Bot is running."}
+
+
 bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 # Диалоговый обработчик
