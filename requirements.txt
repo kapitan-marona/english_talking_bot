@@ -22,5 +22,5 @@ python-telegram-bot[webhooks]
 aiohttp
 fastapi
 uvicorn
-python-telegram-bot==20.7
+python-telegram-bot==22.2
 
