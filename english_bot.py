@@ -1,16 +1,42 @@
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ConversationHandler
-from handlers import (
-    start, lang_choice, level_choice, style_choice,
-    chat, cancel, voice_handler, LANG, LEVEL, STYLE
-)
 import os
+from fastapi import FastAPI, Request
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ConversationHandler,
+    filters,
+)
 
-TOKEN = os.getenv("BOT_TOKEN")
+from config import TELEGRAM_TOKEN
+from handlers import (
+    start,
+    lang_choice,
+    level_choice,
+    style_choice,
+    chat,
+    cancel,
+    voice_handler,
+    device_lang_choice,
+    manual_lang_choice,
+    learn_lang_choice,
+    DEVICE_LANG,
+    LEARN_LANG,
+    LANG,
+    LEVEL,
+    STYLE
+)
 
-def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+app = FastAPI()
 
-    conv_handler = ConversationHandler(
+@app.get("/")
+async def root():
+    return {"message": "English Talking Bot is running."}
+
+bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+
+conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
         DEVICE_LANG: [
@@ -25,11 +51,24 @@ def main():
     fallbacks=[CommandHandler("cancel", cancel)],
 )
 
-    app.add_handler(conv_handler)
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
-    app.add_handler(MessageHandler(filters.VOICE, voice_handler))
+bot_app.add_handler(conv_handler)
+bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+bot_app.add_handler(MessageHandler(filters.VOICE, voice_handler))
 
-    app.run_polling()
+@app.on_event("startup")
+async def startup_event():
+    await bot_app.initialize()
+    await bot_app.start()
 
-if __name__ == "__main__":
-    main()
+@app.on_event("shutdown")
+async def shutdown_event():
+    await bot_app.stop()
+    await bot_app.shutdown()
+
+@app.post("/webhook")
+async def telegram_webhook(req: Request):
+    data = await req.json()
+    update = Update.de_json(data, bot_app.bot)
+    await bot_app.process_update(update)
+    return {"ok": True}
+
