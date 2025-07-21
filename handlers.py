@@ -114,7 +114,11 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         "حسناً، سنتحدث بأسلوب رسمي. ما الموضوع الذي تود البدء به باللغة الإنجليزية؟"
     )
 
-    await update.message.reply_text(welcome_msg, reply_markup=ReplyKeyboardRemove())
+    context.user_data["voice_mode"] = False  # режим по умолчанию — текст
+await update.message.reply_text(
+    welcome_msg + "\n\nChoose a mode 👇 / اختر وضع المحادثة:",
+    reply_markup=voice_mode_button
+)
 
     system_prompt = generate_system_prompt(language, context.user_data["level"], style)
     context.user_data["system_prompt"] = system_prompt
