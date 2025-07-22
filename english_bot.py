@@ -8,45 +8,38 @@ from telegram.ext import (
     ConversationHandler,
     filters,
 )
-
 from config import TELEGRAM_TOKEN
 from handlers import (
     start,
-    target_lang_choice,
+    learn_lang_choice,
     level_choice,
     style_choice,
     chat,
     cancel,
-    voice_handler,
-    TARGET_LANG,
+    LEARN_LANG,
     LEVEL,
-    STYLE,
+    STYLE
 )
 
 app = FastAPI()
-
-@app.get("/")
-async def root():
-    return {"message": "English Talking Bot is running."}
-
-# Инициализируем Telegram-приложение
 bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-# Диалоговый обработчик выбора языка и настроек
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
-        TARGET_LANG: [MessageHandler(filters.TEXT & ~filters.COMMAND, target_lang_choice)],
+        LEARN_LANG: [MessageHandler(filters.TEXT & ~filters.COMMAND, learn_lang_choice)],
         LEVEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, level_choice)],
         STYLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, style_choice)],
     },
     fallbacks=[CommandHandler("cancel", cancel)],
 )
 
-# Обработчики
 bot_app.add_handler(conv_handler)
 bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
-bot_app.add_handler(MessageHandler(filters.VOICE, voice_handler))
+
+@app.get("/")
+async def root():
+    return {"message": "English Talking Bot is running."}
 
 @app.on_event("startup")
 async def startup_event():
