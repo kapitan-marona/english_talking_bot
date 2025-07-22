@@ -4,6 +4,19 @@ from config import client
 from google.cloud import texttospeech
 import aiofiles
 
+VOICE_PARAMS = {
+    "Русский 🇷🇺": {"language_code": "ru-RU", "name": "ru-RU-Wavenet-C"},
+    "English 🇬🇧": {"language_code": "en-GB", "name": "en-GB-Wavenet-B"},
+    "French 🇫🇷": {"language_code": "fr-FR", "name": "fr-FR-Wavenet-C"},
+    "German 🇩🇪": {"language_code": "de-DE", "name": "de-DE-Wavenet-B"},
+    "Italian 🇮🇹": {"language_code": "it-IT", "name": "it-IT-Wavenet-B"},
+    "Spanish 🇪🇸": {"language_code": "es-ES", "name": "es-ES-Wavenet-C"},
+    "Portuguese 🇵🇹": {"language_code": "pt-PT", "name": "pt-PT-Wavenet-A"},
+    "Finnish 🇫🇮": {"language_code": "fi-FI", "name": "fi-FI-Wavenet-A"},
+    "Swedish 🇸🇪": {"language_code": "sv-SE", "name": "sv-SE-Wavenet-A"},
+    "Norwegian 🇳🇴": {"language_code": "nb-NO", "name": "nb-NO-Wavenet-A"},
+}
+
 # === Получаем список всех доступных голосов один раз ===
 ALL_VOICES = {}
 def load_available_voices():
