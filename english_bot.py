@@ -36,6 +36,7 @@ conv_handler = ConversationHandler(
 
 bot_app.add_handler(conv_handler)
 bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+bot_app.add_handler(MessageHandler(filters.VOICE, voice_handler))
 
 @app.get("/")
 async def root():
