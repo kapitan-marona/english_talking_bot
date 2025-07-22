@@ -12,20 +12,15 @@ from telegram.ext import (
 from config import TELEGRAM_TOKEN
 from handlers import (
     start,
-    lang_choice,
+    target_lang_choice,
     level_choice,
     style_choice,
     chat,
     cancel,
     voice_handler,
-    device_lang_choice,
-    manual_lang_choice,
-    learn_lang_choice,
-    DEVICE_LANG,
-    LEARN_LANG,
-    LANG,
+    TARGET_LANG,
     LEVEL,
-    STYLE
+    STYLE,
 )
 
 app = FastAPI()
@@ -34,23 +29,21 @@ app = FastAPI()
 async def root():
     return {"message": "English Talking Bot is running."}
 
+# Инициализируем Telegram-приложение
 bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
+# Диалоговый обработчик выбора языка и настроек
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
-        DEVICE_LANG: [
-            MessageHandler(filters.Regex("^Use device language$"), device_lang_choice),
-            MessageHandler(filters.Regex("^Choose manually$"), manual_lang_choice),
-        ],
-        LANG: [MessageHandler(filters.TEXT & ~filters.COMMAND, lang_choice)],
-        LEARN_LANG: [MessageHandler(filters.TEXT & ~filters.COMMAND, learn_lang_choice)],
+        TARGET_LANG: [MessageHandler(filters.TEXT & ~filters.COMMAND, target_lang_choice)],
         LEVEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, level_choice)],
         STYLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, style_choice)],
     },
     fallbacks=[CommandHandler("cancel", cancel)],
 )
 
+# Обработчики
 bot_app.add_handler(conv_handler)
 bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 bot_app.add_handler(MessageHandler(filters.VOICE, voice_handler))
@@ -71,4 +64,3 @@ async def telegram_webhook(req: Request):
     update = Update.de_json(data, bot_app.bot)
     await bot_app.process_update(update)
     return {"ok": True}
-
