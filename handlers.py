@@ -12,6 +12,8 @@ def load_available_voices():
         for lang_code in v.language_codes:
             ALL_VOICES.setdefault(lang_code, []).append(v)
 
+google_tts_client, tmp_key_path = init_google_tts_client()
+
 load_available_voices()
 
 import tempfile
@@ -57,7 +59,6 @@ def init_google_tts_client():
     client = texttospeech.TextToSpeechClient()
     return client, tmpfile_path
 
-google_tts_client, tmp_key_path = init_google_tts_client()
 
 def generate_system_prompt(interface_lang, level, style, learn_lang):
     base = f"You are a {learn_lang} language assistant helping a user practice {learn_lang}."
