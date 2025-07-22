@@ -269,7 +269,7 @@ async def speak_and_reply_google_tts(text: str, update: Update, context):
         tmpfile_path = tmpfile.name
 
     async with aiofiles.open(tmpfile_path, "rb") as audio_file:
-    await update.message.reply_voice(voice=audio_file)
+        await update.message.reply_voice(voice=audio_file)
     os.remove(tmpfile_path)
 
 
