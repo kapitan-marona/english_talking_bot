@@ -16,6 +16,7 @@ from handlers import (
     style_choice,
     chat,
     cancel,
+    voice_handler,
     LEARN_LANG,
     LEVEL,
     STYLE
