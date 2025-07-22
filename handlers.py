@@ -12,10 +12,6 @@ def load_available_voices():
         for lang_code in v.language_codes:
             ALL_VOICES.setdefault(lang_code, []).append(v)
 
-google_tts_client, tmp_key_path = init_google_tts_client()
-
-load_available_voices()
-
 import tempfile
 import os
 import base64
@@ -261,6 +257,10 @@ async def speak_and_reply_google_tts(text: str, update: Update, context):
     with open(tmpfile_path, "rb") as voice_file:
         await update.message.reply_voice(voice=voice_file)
     os.remove(tmpfile_path)
+
+
+google_tts_client, tmp_key_path = init_google_tts_client()
+load_available_voices()
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
