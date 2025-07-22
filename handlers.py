@@ -273,33 +273,59 @@ from tempfile import NamedTemporaryFile
 
 async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
-    if not voice:
-        return
 
-    file = await context.bot.get_file(voice.file_id)
-    with NamedTemporaryFile(delete=False, suffix=".ogg") as f:
-        file_path = f.name
-        await file.download_to_drive(custom_path=file_path)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        ogg_path = f"{tmpdir}/voice.ogg"
+        mp3_path = f"{tmpdir}/voice.mp3"
 
-    # Конвертация OGG в MP3
-    mp3_path = file_path.replace(".ogg", ".mp3")
-    subprocess.run(["ffmpeg", "-i", file_path, mp3_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        file = await context.bot.get_file(voice.file_id)
+        await file.download_to_drive(ogg_path)
+        subprocess.run(["ffmpeg", "-i", ogg_path, mp3_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    try:
-        with open(mp3_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                response_format="text"
-            )
-        await update.message.chat.send_action(action=ChatAction.TYPING)
-        update.message.text = transcript.strip()
-        return await chat(update, context)
+        try:
+            with open(mp3_path, "rb") as audio_file:
+                learn_lang = context.user_data.get("learn_lang", "English 🇬🇧")
+                LANG_CODES = {
+                    "English 🇬🇧": "en",
+                    "French 🇫🇷": "fr",
+                    "Spanish 🇪🇸": "es",
+                    "German 🇩🇪": "de",
+                    "Italian 🇮🇹": "it",
+                    "Portuguese 🇵🇹": "pt",
+                    "Chinese 🇨🇳": "zh",
+                    "Japanese 🇯🇵": "ja",
+                    "Korean 🇰🇷": "ko",
+                    "Turkish 🇹🇷": "tr"
+                }
+                lang_code = LANG_CODES.get(learn_lang, "en")
 
-    except Exception as e:
-        await update.message.reply_text(f"Произошла ошибка при распознавании аудио: {e}")
-    finally:
-        os.remove(file_path)
-        if os.path.exists(mp3_path):
-            os.remove(mp3_path)
+                transcript = client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="text",
+                    language=lang_code
+                )
+
+            class FakeMessage:
+                def __init__(self, text, original):
+                    self.text = text
+                    self.chat_id = original.chat_id
+                    self.chat = original.chat
+                    self.from_user = original.from_user
+                    self.message_id = original.message_id
+                    self._original = original
+
+                async def reply_text(self, *args, **kwargs):
+                    return await self._original.reply_text(*args, **kwargs)
+
+                async def reply_voice(self, *args, **kwargs):
+                    return await self._original.reply_voice(*args, **kwargs)
+
+            fake_message = FakeMessage(transcript.strip(), update.message)
+            fake_update = Update(update.update_id, message=fake_message)
+            await chat(fake_update, context)
+
+        except Exception as e:
+            await update.message.reply_text(f"Ошибка распознавания речи: {e}")
+
 
