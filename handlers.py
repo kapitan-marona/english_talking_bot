@@ -2,6 +2,7 @@ from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardB
 from telegram.ext import ConversationHandler, ContextTypes
 from config import client
 from google.cloud import texttospeech
+import aiofiles
 
 # === Получаем список всех доступных голосов один раз ===
 ALL_VOICES = {}
@@ -254,8 +255,8 @@ async def speak_and_reply_google_tts(text: str, update: Update, context):
         tmpfile.write(response.audio_content)
         tmpfile_path = tmpfile.name
 
-    with open(tmpfile_path, "rb") as voice_file:
-        await update.message.reply_voice(voice=voice_file)
+    async with aiofiles.open(tmpfile_path, "rb") as audio_file:
+    await update.message.reply_voice(voice=audio_file)
     os.remove(tmpfile_path)
 
 
