@@ -2,6 +2,18 @@ from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardB
 from telegram.ext import ConversationHandler, ContextTypes
 from config import client
 from google.cloud import texttospeech
+
+# === Получаем список всех доступных голосов один раз ===
+ALL_VOICES = {}
+def load_available_voices():
+    global ALL_VOICES
+    voices = google_tts_client.list_voices().voices
+    for v in voices:
+        for lang_code in v.language_codes:
+            ALL_VOICES.setdefault(lang_code, []).append(v)
+
+load_available_voices()
+
 import tempfile
 import os
 import base64
@@ -89,6 +101,18 @@ def generate_system_prompt(interface_lang, level, style, learn_lang):
         f"{tone_instruction} {grammar_instruction} {correction_instruction} "
         f"Always respond in {learn_lang}. Ask follow-up questions to keep the conversation going."
     )
+
+def pick_best_voice(language_code: str) -> str:
+    voices = ALL_VOICES.get(language_code, [])
+    # Ищем Wavenet, потом Standard, потом любой
+    for voice in voices:
+        if "Wavenet" in voice.name:
+            return voice.name
+    for voice in voices:
+        if "Standard" in voice.name:
+            return voice.name
+    return voices[0].name if voices else None
+
 
 # === Хендлеры ===
 
@@ -200,15 +224,22 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def speak_and_reply_google_tts(text: str, update: Update, context):
     level = context.user_data.get("level", "B1-B2")
     learn_lang = context.user_data.get("learn_lang", "English")
-
     speaking_rate = 0.85 if level == "A1-A2" else 1.0
 
     lang_map = {
         "English": "en-US", "French": "fr-FR", "Spanish": "es-ES", "German": "de-DE", "Italian": "it-IT",
-        "Finnish": "fi-FI", "Norwegian": "no-NO", "Swedish": "sv-SE", "Russian": "ru-RU", "Portuguese": "pt-PT",
+        "Finnish": "fi-FI", "Norwegian": "no-NO", "Swedish": "sv-SE", "Russian": "ru-RU",
+        "Portuguese": "pt-PT",  # можешь добавить "pt-BR", если нужно
     }
     language_code = lang_map.get(learn_lang, "en-US")
-    voice_name = f"{language_code}-Wavenet-D"
+    voice_name = pick_best_voice(language_code)
+
+    if not voice_name:
+        print(f"[TTS] ⚠️ No voice found for {language_code}, using fallback en-US")
+        language_code = "en-US"
+        voice_name = pick_best_voice("en-US")
+
+    print(f"[TTS] ✅ Using voice {voice_name} for {language_code}")
 
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(
@@ -229,6 +260,7 @@ async def speak_and_reply_google_tts(text: str, update: Update, context):
     with open(tmpfile_path, "rb") as voice_file:
         await update.message.reply_voice(voice=voice_file)
     os.remove(tmpfile_path)
+
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Отмена.", reply_markup=ReplyKeyboardRemove())
