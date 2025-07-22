@@ -266,3 +266,40 @@ load_available_voices()
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Отмена.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
+
+
+from telegram.constants import ChatAction
+from tempfile import NamedTemporaryFile
+
+async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    voice = update.message.voice
+    if not voice:
+        return
+
+    file = await context.bot.get_file(voice.file_id)
+    with NamedTemporaryFile(delete=False, suffix=".ogg") as f:
+        file_path = f.name
+        await file.download_to_drive(custom_path=file_path)
+
+    # Конвертация OGG в MP3
+    mp3_path = file_path.replace(".ogg", ".mp3")
+    subprocess.run(["ffmpeg", "-i", file_path, mp3_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    try:
+        with open(mp3_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text"
+            )
+        await update.message.chat.send_action(action=ChatAction.TYPING)
+        update.message.text = transcript.strip()
+        return await chat(update, context)
+
+    except Exception as e:
+        await update.message.reply_text(f"Произошла ошибка при распознавании аудио: {e}")
+    finally:
+        os.remove(file_path)
+        if os.path.exists(mp3_path):
+            os.remove(mp3_path)
+
