@@ -242,6 +242,13 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
     context.user_data["voice_mode"] = True
+    context.user_data["system_prompt"] = generate_system_prompt(
+        interface_lang=context.user_data.get("language", "English"),
+        level=context.user_data.get("level", "B1-B2"),
+        style=context.user_data.get("style", "разговорный"),
+        learn_lang=context.user_data.get("learn_lang", "English"),
+        voice_mode=True
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         ogg_path = f"{tmpdir}/voice.ogg"
