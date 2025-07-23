@@ -185,49 +185,34 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip()
 
     if user_text == "📢 Voice mode":
-    context.user_data["voice_mode"] = True
+        context.user_data["voice_mode"] = True
 
-    # Обновляем system_prompt под голосовой режим
-    context.user_data["system_prompt"] = generate_system_prompt(
-        interface_lang=context.user_data.get("language", "English"),
-        level=context.user_data.get("level", "B1-B2"),
-        style=context.user_data.get("style", "Casual"),
-        learn_lang=context.user_data.get("learn_lang", "English"),
-        voice_mode=True
-    )
+        # Обновляем system_prompt под голосовой режим
+        context.user_data["system_prompt"] = generate_system_prompt(
+            interface_lang=context.user_data.get("language", "English"),
+            level=context.user_data.get("level", "B1-B2"),
+            style=context.user_data.get("style", "Casual"),
+            learn_lang=context.user_data.get("learn_lang", "English"),
+            voice_mode=True
+        )
 
-    await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
-    return
-
-elif user_text == "⌨️ Text mode":
-    context.user_data["voice_mode"] = False
-
-    # Обновляем system_prompt под текстовый режим
-    context.user_data["system_prompt"] = generate_system_prompt(
-        interface_lang=context.user_data.get("language", "English"),
-        level=context.user_data.get("level", "B1-B2"),
-        style=context.user_data.get("style", "Casual"),
-        learn_lang=context.user_data.get("learn_lang", "English"),
-        voice_mode=False
-    )
-
-    await update.message.reply_text("Text mode enabled.", reply_markup=voice_mode_button)
-    return
+        await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
+        return
 
     elif user_text == "⌨️ Text mode":
-    context.user_data["voice_mode"] = False
+        context.user_data["voice_mode"] = False
 
-    # Обновляем system_prompt под текстовый режим
-    context.user_data["system_prompt"] = generate_system_prompt(
-        interface_lang=context.user_data.get("language", "English"),
-        level=context.user_data.get("level", "B1-B2"),
-        style=context.user_data.get("style", "Casual"),
-        learn_lang=context.user_data.get("learn_lang", "English"),
-        voice_mode=False
-    )
+        # Обновляем system_prompt под текстовый режим
+        context.user_data["system_prompt"] = generate_system_prompt(
+            interface_lang=context.user_data.get("language", "English"),
+            level=context.user_data.get("level", "B1-B2"),
+            style=context.user_data.get("style", "Casual"),
+            learn_lang=context.user_data.get("learn_lang", "English"),
+            voice_mode=False
+        )
 
-    await update.message.reply_text("Text mode enabled.", reply_markup=voice_mode_button)
-    return
+        await update.message.reply_text("Text mode enabled.", reply_markup=voice_mode_button)
+        return
 
     if "system_prompt" not in context.user_data:
         await update.message.reply_text("/start, please.")
@@ -265,7 +250,6 @@ elif user_text == "⌨️ Text mode":
 
     except Exception as e:
         await update.message.reply_text(f"Ошибка генерации ответа: {e}")
-
 
 async def speak_and_reply_google_tts(text: str, update: Update, context):
     level = context.user_data.get("level", "B1-B2")
