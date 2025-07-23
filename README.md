@@ -1,1 +1,0 @@
-# english_talking_bot
