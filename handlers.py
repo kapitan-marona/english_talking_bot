@@ -316,7 +316,7 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Отмена.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END"
+    return ConversationHandler.END
     }
   ]
 }
