@@ -199,6 +199,21 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
     return
 
+elif user_text == "⌨️ Text mode":
+    context.user_data["voice_mode"] = False
+
+    # Обновляем system_prompt под текстовый режим
+    context.user_data["system_prompt"] = generate_system_prompt(
+        interface_lang=context.user_data.get("language", "English"),
+        level=context.user_data.get("level", "B1-B2"),
+        style=context.user_data.get("style", "Casual"),
+        learn_lang=context.user_data.get("learn_lang", "English"),
+        voice_mode=False
+    )
+
+    await update.message.reply_text("Text mode enabled.", reply_markup=voice_mode_button)
+    return
+
     elif user_text == "⌨️ Text mode":
     context.user_data["voice_mode"] = False
 
