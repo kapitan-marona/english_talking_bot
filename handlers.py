@@ -241,6 +241,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
+    context.user_data["voice_mode"] = True
 
     with tempfile.TemporaryDirectory() as tmpdir:
         ogg_path = f"{tmpdir}/voice.ogg"
