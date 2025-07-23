@@ -3,48 +3,22 @@ from telegram.ext import ConversationHandler, ContextTypes
 from config import client
 from google.cloud import texttospeech
 import aiofiles
-
-VOICE_PARAMS = {
-    "Русский 🇷🇺": {"language_code": "ru-RU", "name": "ru-RU-Wavenet-C"},
-    "English 🇬🇧": {"language_code": "en-GB", "name": "en-GB-Wavenet-B"},
-    "French 🇫🇷": {"language_code": "fr-FR", "name": "fr-FR-Wavenet-C"},
-    "German 🇩🇪": {"language_code": "de-DE", "name": "de-DE-Wavenet-B"},
-    "Italian 🇮🇹": {"language_code": "it-IT", "name": "it-IT-Wavenet-B"},
-    "Spanish 🇪🇸": {"language_code": "es-ES", "name": "es-ES-Wavenet-C"},
-    "Portuguese 🇵🇹": {"language_code": "pt-PT", "name": "pt-PT-Wavenet-A"},
-    "Finnish 🇫🇮": {"language_code": "fi-FI", "name": "fi-FI-Wavenet-A"},
-    "Swedish 🇸🇪": {"language_code": "sv-SE", "name": "sv-SE-Wavenet-A"},
-    "Norwegian 🇳🇴": {"language_code": "nb-NO", "name": "nb-NO-Wavenet-A"},
-}
-
-# === Получаем список всех доступных голосов один раз ===
-ALL_VOICES = {}
-def load_available_voices():
-    global ALL_VOICES
-    voices = google_tts_client.list_voices().voices
-    for v in voices:
-        for lang_code in v.language_codes:
-            ALL_VOICES.setdefault(lang_code, []).append(v)
-
 import tempfile
 import os
 import base64
 import subprocess
 
-# Шаги для ConversationHandler
+# Conversation steps
 LEARN_LANG, LEVEL, STYLE = range(3)
 
-# Кнопки режимов
+# Interface and language selection
 voice_mode_button = ReplyKeyboardMarkup(
-    [[KeyboardButton("🗣️ Voice mode")]],
-    resize_keyboard=True
+    [[KeyboardButton("🖙️ Voice mode")]], resize_keyboard=True
 )
 text_mode_button = ReplyKeyboardMarkup(
-    [[KeyboardButton("⌨️ Text mode")]],
-    resize_keyboard=True
+    [[KeyboardButton("⌨️ Text mode")]], resize_keyboard=True
 )
 
-# Изучаемые языки (без флажков)
 learn_lang_keyboard = [
     ["English", "French", "Spanish", "German", "Italian"],
     ["Finnish", "Norwegian", "Swedish", "Russian", "Portuguese"]
@@ -56,11 +30,17 @@ level_markup = ReplyKeyboardMarkup(level_keyboard, one_time_keyboard=True, resiz
 
 style_keyboard_ru = [["Разговорный", "Деловой"]]
 
-# Google TTS
+LANG_CODES = {
+    "English": "en", "French": "fr", "Spanish": "es", "German": "de", "Italian": "it",
+    "Portuguese": "pt", "Finnish": "fi", "Norwegian": "no", "Swedish": "sv", "Russian": "ru"
+}
+
+# Google TTS init
+
 def init_google_tts_client():
     encoded_key = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_BASE64")
     if not encoded_key:
-        raise EnvironmentError("Environment variable GOOGLE_APPLICATION_CREDENTIALS_BASE64 is not set")
+        raise EnvironmentError("GOOGLE_APPLICATION_CREDENTIALS_BASE64 is not set")
     json_key = base64.b64decode(encoded_key)
     with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as tmpfile:
         tmpfile.write(json_key)
@@ -69,53 +49,20 @@ def init_google_tts_client():
     client = texttospeech.TextToSpeechClient()
     return client, tmpfile_path
 
+google_tts_client, tmp_key_path = init_google_tts_client()
 
-def generate_system_prompt(interface_lang, level, style, learn_lang):
-    base = f"You are a {learn_lang} language assistant helping a user practice {learn_lang}."
-    native_lang = "Russian" if interface_lang == "Русский" else "English"
+ALL_VOICES = {}
+def load_available_voices():
+    global ALL_VOICES
+    voices = google_tts_client.list_voices().voices
+    for v in voices:
+        for lang_code in v.language_codes:
+            ALL_VOICES.setdefault(lang_code, []).append(v)
 
-    tone_instruction = ""
-    correction_instruction = ""
-    grammar_instruction = ""
-
-    if style.lower() in ["разговорный"]:
-        tone_instruction = (
-            "Your tone is relaxed, friendly, like an old friend. "
-            "Use slang, emojis, and contractions where appropriate. "
-            f"At level A1-A2, keep slang minimal and explain it in {native_lang}."
-        )
-        correction_instruction = (
-            f"If the user makes mistakes in {learn_lang}, gently correct them in a friendly way, "
-            f"explaining corrections clearly in {native_lang}."
-        )
-    elif style.lower() in ["деловой"]:
-        tone_instruction = (
-            "Your tone is formal, polite, and professional. Avoid slang and contractions."
-        )
-        correction_instruction = (
-            f"If the user makes mistakes in {learn_lang}, correct them formally and politely."
-        )
-
-    if level == "A1-A2":
-        grammar_instruction = (
-            "Use short, simple sentences. Avoid complex grammar. "
-            f"Keep responses easy to understand for a beginner in {learn_lang}."
-        )
-    elif level == "B1-B2":
-        grammar_instruction = (
-            "You may use more advanced grammar, longer sentences, and richer vocabulary. "
-            f"Adjust your tone accordingly in {learn_lang}."
-        )
-
-    return (
-        f"{base} The user's native language is {native_lang}. "
-        f"{tone_instruction} {grammar_instruction} {correction_instruction} "
-        f"Always respond in {learn_lang}. Ask follow-up questions to keep the conversation going."
-    )
+load_available_voices()
 
 def pick_best_voice(language_code: str) -> str:
     voices = ALL_VOICES.get(language_code, [])
-    # Ищем Wavenet, потом Standard, потом любой
     for voice in voices:
         if "Wavenet" in voice.name:
             return voice.name
@@ -124,8 +71,37 @@ def pick_best_voice(language_code: str) -> str:
             return voice.name
     return voices[0].name if voices else None
 
+def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=False):
+    native_lang = "Russian" if interface_lang == "Русский" else "English"
+    tone = ""
+    correction = ""
+    grammar = ""
+    
+    is_voice = voice_mode
+    is_beginner = level == "A1-A2"
+    is_formal = style.lower() == "деловой"
 
-# === Хендлеры ===
+    if not is_formal:
+        tone = "Your tone is friendly and relaxed. Use slang and humor." if not is_voice else "Friendly and natural tone. Use some slang."
+    else:
+        tone = "Polite, professional, modern tone. Avoid slang and emojis."
+
+    if is_beginner:
+        grammar = f"Use simple grammar and short sentences in {learn_lang}."
+        correction = (
+            f"Explain mistakes in {native_lang}."
+            if not is_voice else f"Correct mistakes gently and explain in {learn_lang}."
+        )
+    else:
+        grammar = f"Use richer grammar and vocabulary in {learn_lang}."
+        correction = f"Correct and explain mistakes in {learn_lang}."
+
+    return (
+        f"You are a helpful assistant for learning {learn_lang}. "
+        f"{tone} {grammar} {correction} Always respond in {learn_lang}. Keep the conversation going with questions."
+    )
+
+# === Handlers ===
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
@@ -158,28 +134,24 @@ async def level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return STYLE
 
 async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    style = update.message.text
-    context.user_data["style"] = style
-    lang = context.user_data["language"]
-
-    welcome_msg = (
-        "Отлично, давай просто поболтаем! 😎 С чего хочешь начать?"
-        if lang == "Русский" and style.lower() == "разговорный" else
-        "Круто! Намечается деловой разговор. С чего начнем?"
-        if lang == "Русский" else
-        "Great! Let's chat. What would you like to start with?"
-    )
-
+    context.user_data["style"] = update.message.text
     context.user_data["voice_mode"] = False
     context.user_data["mode_button_shown"] = False
 
-    await update.message.reply_text(welcome_msg, reply_markup=ReplyKeyboardRemove())
+    lang = context.user_data["language"]
+    msg = (
+        "Отлично, давай просто поболтаем! 😎 С чего хочешь начать?"
+        if lang == "Русский" else
+        "Great! Let's chat. What would you like to start with?"
+    )
+    await update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
 
     prompt = generate_system_prompt(
-        context.user_data["language"],
-        context.user_data["level"],
-        context.user_data["style"],
-        context.user_data["learn_lang"]
+        interface_lang=context.user_data["language"],
+        level=context.user_data["level"],
+        style=context.user_data["style"],
+        learn_lang=context.user_data["learn_lang"],
+        voice_mode=False
     )
     context.user_data["system_prompt"] = prompt
     return ConversationHandler.END
@@ -187,17 +159,17 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip()
 
-    if user_text == "🗣️ Voice mode":
+    if user_text == "🖙️ Voice mode":
         context.user_data["voice_mode"] = True
-        await update.message.reply_text("Voice mode enabled. Talk to me!", reply_markup=text_mode_button)
+        await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
         return
     elif user_text == "⌨️ Text mode":
         context.user_data["voice_mode"] = False
-        await update.message.reply_text("Text mode enabled. Talk to me!", reply_markup=voice_mode_button)
+        await update.message.reply_text("Text mode enabled.", reply_markup=voice_mode_button)
         return
 
     if "system_prompt" not in context.user_data:
-        await update.message.reply_text("Пожалуйста, начни сначала с команды /start.")
+        await update.message.reply_text("/start, please.")
         return
 
     show_voice_button = False
@@ -237,20 +209,11 @@ async def speak_and_reply_google_tts(text: str, update: Update, context):
     learn_lang = context.user_data.get("learn_lang", "English")
     speaking_rate = 0.85 if level == "A1-A2" else 1.0
 
-    lang_map = {
-        "English": "en-US", "French": "fr-FR", "Spanish": "es-ES", "German": "de-DE", "Italian": "it-IT",
-        "Finnish": "fi-FI", "Norwegian": "no-NO", "Swedish": "sv-SE", "Russian": "ru-RU",
-        "Portuguese": "pt-PT",  # можешь добавить "pt-BR", если нужно
-    }
-    language_code = lang_map.get(learn_lang, "en-US")
+    language_code = LANG_CODES.get(learn_lang, "en") + "-US"
     voice_name = pick_best_voice(language_code)
-
     if not voice_name:
-        print(f"[TTS] ⚠️ No voice found for {language_code}, using fallback en-US")
         language_code = "en-US"
-        voice_name = pick_best_voice("en-US")
-
-    print(f"[TTS] ✅ Using voice {voice_name} for {language_code}")
+        voice_name = pick_best_voice(language_code)
 
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(
@@ -272,18 +235,9 @@ async def speak_and_reply_google_tts(text: str, update: Update, context):
         await update.message.reply_voice(voice=audio_file)
     os.remove(tmpfile_path)
 
-
-google_tts_client, tmp_key_path = init_google_tts_client()
-load_available_voices()
-
-
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Отмена.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
-
-
-from telegram.constants import ChatAction
-from tempfile import NamedTemporaryFile
 
 async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
@@ -298,21 +252,7 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         try:
             with open(mp3_path, "rb") as audio_file:
-                learn_lang = context.user_data.get("learn_lang", "English 🇬🇧")
-                LANG_CODES = {
-                    "English 🇬🇧": "en",
-                    "French 🇫🇷": "fr",
-                    "Spanish 🇪🇸": "es",
-                    "German 🇩🇪": "de",
-                    "Italian 🇮🇹": "it",
-                    "Portuguese 🇵🇹": "pt",
-                    "Chinese 🇨🇳": "zh",
-                    "Japanese 🇯🇵": "ja",
-                    "Korean 🇰🇷": "ko",
-                    "Turkish 🇹🇷": "tr"
-                }
-                lang_code = LANG_CODES.get(learn_lang, "en")
-
+                lang_code = LANG_CODES.get(context.user_data.get("learn_lang", "English"), "en")
                 transcript = client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
@@ -341,5 +281,3 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         except Exception as e:
             await update.message.reply_text(f"Ошибка распознавания речи: {e}")
-
-
