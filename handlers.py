@@ -7,13 +7,14 @@ import tempfile
 import os
 import base64
 import subprocess
+from io import BytesIO
 
 # Conversation steps
 LEARN_LANG, LEVEL, STYLE = range(3)
 
 # Interface and language selection
 voice_mode_button = ReplyKeyboardMarkup(
-    [[KeyboardButton("🖙️ Voice mode")]], resize_keyboard=True
+    [[KeyboardButton("🔊 Voice mode")]], resize_keyboard=True
 )
 text_mode_button = ReplyKeyboardMarkup(
     [[KeyboardButton("⌨️ Text mode")]], resize_keyboard=True
@@ -73,18 +74,10 @@ def pick_best_voice(language_code: str) -> str:
 
 def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=False):
     native_lang = "Russian" if interface_lang == "Русский" else "English"
-    tone = ""
-    correction = ""
-    grammar = ""
-    
+
     is_voice = voice_mode
     is_beginner = level == "A1-A2"
     is_formal = style.lower() == "деловой"
-
-    if not is_formal:
-        tone = "Your tone is friendly and relaxed. Use slang and humor." if not is_voice else "Friendly and natural tone. Use some slang."
-    else:
-        tone = "Polite, professional, modern tone. Avoid slang and emojis."
 
     if is_beginner:
         grammar = f"Use simple grammar and short sentences in {learn_lang}."
@@ -96,10 +89,33 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
         grammar = f"Use richer grammar and vocabulary in {learn_lang}."
         correction = f"Correct and explain mistakes in {learn_lang}."
 
+    if is_formal:
+        tone = (
+            "Your tone is relaxed, modern, open to dialogue, yet confident and formal. Avoid slang and emojis."
+        )
+    else:
+        if is_beginner:
+            tone = (
+                "Friendly and humorous tone. "
+                "Use some slang, but explain it in {native_lang} if in text mode. "
+                "Don't use emojis in voice mode."
+            ) if is_voice else (
+                "Friendly and humorous tone. Use slang, emojis, and explain expressions in {native_lang}."
+            )
+        else:
+            tone = (
+                "Friendly, humorous tone. Use slang. "
+                "Don't use emojis in voice mode."
+            ) if is_voice else (
+                "Friendly, humorous tone. Use slang and emojis."
+            )
+
     return (
         f"You are a helpful assistant for learning {learn_lang}. "
-        f"{tone} {grammar} {correction} Always respond in {learn_lang}. Keep the conversation going with questions."
+        f"{tone} {grammar} {correction} "
+        f"Always respond in {learn_lang}. Keep the conversation going with questions in context."
     )
+
 
 # === Handlers ===
 
@@ -159,7 +175,7 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip()
 
-    if user_text == "🖙️ Voice mode":
+    if user_text == "📢 Voice mode":
         context.user_data["voice_mode"] = True
         await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
         return
