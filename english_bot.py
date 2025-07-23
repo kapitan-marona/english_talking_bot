@@ -19,12 +19,13 @@ from handlers import (
     voice_handler,
     LEARN_LANG,
     LEVEL,
-    STYLE
+    STYLE,
 )
 
 app = FastAPI()
 bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
+# Основной ConversationHandler для выбора языка, уровня, стиля
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
@@ -35,6 +36,7 @@ conv_handler = ConversationHandler(
     fallbacks=[CommandHandler("cancel", cancel)],
 )
 
+# Регистрируем обработчики
 bot_app.add_handler(conv_handler)
 bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 bot_app.add_handler(MessageHandler(filters.VOICE, voice_handler))
