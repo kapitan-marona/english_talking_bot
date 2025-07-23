@@ -7,13 +7,14 @@ import tempfile
 import os
 import base64
 import subprocess
+from io import BytesIO
 
 # Conversation steps
 LEARN_LANG, LEVEL, STYLE = range(3)
 
 # Interface and language selection
 voice_mode_button = ReplyKeyboardMarkup(
-    [[KeyboardButton("🖙️ Voice mode")]], resize_keyboard=True
+    [[KeyboardButton("🔊 Voice mode")]], resize_keyboard=True
 )
 text_mode_button = ReplyKeyboardMarkup(
     [[KeyboardButton("⌨️ Text mode")]], resize_keyboard=True
@@ -76,7 +77,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
     tone = ""
     correction = ""
     grammar = ""
-    
+
     is_voice = voice_mode
     is_beginner = level == "A1-A2"
     is_formal = style.lower() == "деловой"
@@ -159,7 +160,7 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip()
 
-    if user_text == "🖙️ Voice mode":
+    if user_text == "🔊 Voice mode":
         context.user_data["voice_mode"] = True
         await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
         return
@@ -259,7 +260,9 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         subprocess.run(["ffmpeg", "-i", ogg_path, mp3_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         try:
-            with open(mp3_path, "rb") as audio_file:
+            async with aiofiles.open(mp3_path, "rb") as f:
+                audio_data = await f.read()
+                audio_file = BytesIO(audio_data)
                 lang_code = LANG_CODES.get(context.user_data.get("learn_lang", "English"), "en")
                 transcript = client.audio.transcriptions.create(
                     model="whisper-1",
