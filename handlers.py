@@ -104,7 +104,117 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Диалог начат. (placeholder)")
+    user_text = update.message.text.strip()
+
+    if user_text.lower() in ["🔊 voice mode", "📢 voice mode", "voice mode"]:
+        context.user_data["voice_mode"] = True
+        context.user_data["system_prompt"] = generate_system_prompt(
+            context.user_data.get("language", "English"),
+            context.user_data.get("level", "B1-B2"),
+            context.user_data.get("style", "Casual"),
+            context.user_data.get("learn_lang", "English"),
+            voice_mode=True
+        )
+        await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
+        return
+
+    if user_text.lower() in ["⌨️ text mode", "text mode"]:
+        context.user_data["voice_mode"] = False
+        context.user_data["system_prompt"] = generate_system_prompt(
+            context.user_data.get("language", "English"),
+            context.user_data.get("level", "B1-B2"),
+            context.user_data.get("style", "Casual"),
+            context.user_data.get("learn_lang", "English"),
+            voice_mode=False
+        )
+        await update.message.reply_text("Text mode enabled.", reply_markup=voice_mode_button)
+        return
+
+    if "system_prompt" not in context.user_data:
+        await update.message.reply_text("/start, please.")
+        return
+
+    system_prompt = context.user_data["system_prompt"]
+    chat_history = context.user_data.setdefault("chat_history", [])
+    chat_history.append({"role": "user", "content": user_text})
+    context.user_data["chat_history"] = chat_history[-40:]
+    messages = [{"role": "system", "content": system_prompt}] + context.user_data["chat_history"]
+
+    try:
+        completion = client.chat.completions.create(
+            model="gpt-4",
+            messages=messages,
+            temperature=0.7
+        )
+        answer = completion.choices[0].message.content
+        context.user_data["chat_history"].append({"role": "assistant", "content": answer})
+
+        if context.user_data.get("voice_mode"):
+            await speak_and_reply(answer, update, context)
+        else:
+            await update.message.reply_text(answer, reply_markup=text_mode_button if context.user_data.get("voice_mode") else voice_mode_button)
+
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка: {e}")
+
+async def speak_and_reply(text, update, context):
+    lang_code = LANG_CODES.get(context.user_data.get("learn_lang", "English"), "en")
+    language_code = {
+        "en": "en-US", "fr": "fr-FR", "es": "es-ES", "de": "de-DE", "it": "it-IT",
+        "pt": "pt-PT", "sv": "sv-SE", "ru": "ru-RU"
+    }.get(lang_code, "en-US")
+    synthesis_input = texttospeech.SynthesisInput(text=text)
+    voice = texttospeech.VoiceSelectionParams(language_code=language_code, ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL)
+    audio_config = texttospeech.AudioConfig(audio_encoding=texttospeech.AudioEncoding.MP3)
+    tts_client = texttospeech.TextToSpeechClient()
+    response = tts_client.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp:
+        tmp.write(response.audio_content)
+        path = tmp.name
+
+    async with aiofiles.open(path, "rb") as audio:
+        await update.message.reply_voice(voice=audio)
+    os.remove(path)
 
 async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Голос получен. (placeholder)")
+    voice = update.message.voice
+    lang_code = LANG_CODES.get(context.user_data.get("learn_lang", "English"), "en")
+
+    if lang_code not in WHISPER_SUPPORTED_LANGS:
+        lang = context.user_data.get("language", "English")
+        await update.message.reply_text(UNSUPPORTED_LANGUAGE_MESSAGE.get(lang))
+        return
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        ogg_path = f"{tmpdir}/voice.ogg"
+        mp3_path = f"{tmpdir}/voice.mp3"
+        file = await context.bot.get_file(voice.file_id)
+        await file.download_to_drive(ogg_path)
+        subprocess.run(["ffmpeg", "-i", ogg_path, mp3_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        with open(mp3_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text",
+                language=lang_code
+            )
+
+        class FakeMessage:
+            def __init__(self, text, original):
+                self.text = text
+                self.chat_id = original.chat_id
+                self.chat = original.chat
+                self.from_user = original.from_user
+                self.message_id = original.message_id
+                self._original = original
+
+            async def reply_text(self, *args, **kwargs):
+                return await self._original.reply_text(*args, **kwargs)
+
+            async def reply_voice(self, *args, **kwargs):
+                return await self._original.reply_voice(*args, **kwargs)
+
+        fake_update = Update(update.update_id, message=FakeMessage(transcript.strip(), update.message))
+        await chat(fake_update, context)
