@@ -102,3 +102,9 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Диалог отменён.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
+
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Диалог начат. (placeholder)")
+
+async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Голос получен. (placeholder)")
