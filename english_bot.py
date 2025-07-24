@@ -1,63 +1,35 @@
-import os
 from fastapi import FastAPI, Request
 from telegram import Update
 from telegram.ext import (
-    ApplicationBuilder,
-    CommandHandler,
-    MessageHandler,
-    ConversationHandler,
-    filters,
+    Application, CommandHandler, MessageHandler,
+    ConversationHandler, ContextTypes, filters
 )
-from config import TELEGRAM_TOKEN
 from handlers import (
-    start,
-    learn_lang_choice,
-    level_choice,
-    style_choice,
-    chat,
-    cancel,
-    voice_handler,
-    LEARN_LANG,
-    LEVEL,
-    STYLE,
+    start, learn_lang_choice, level_choice, style_choice,
+    chat, voice_handler, cancel
 )
+from config import token
 
+application = Application.builder().token(token).build()
 app = FastAPI()
-bot_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-# Основной ConversationHandler для выбора языка, уровня, стиля
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
     states={
-        LEARN_LANG: [MessageHandler(filters.TEXT & ~filters.COMMAND, learn_lang_choice)],
-        LEVEL: [MessageHandler(filters.TEXT & ~filters.COMMAND, level_choice)],
-        STYLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, style_choice)],
+        0: [MessageHandler(filters.TEXT & ~filters.COMMAND, learn_lang_choice)],
+        1: [MessageHandler(filters.TEXT & ~filters.COMMAND, level_choice)],
+        2: [MessageHandler(filters.TEXT & ~filters.COMMAND, style_choice)],
     },
     fallbacks=[CommandHandler("cancel", cancel)],
 )
 
-# Регистрируем обработчики
-bot_app.add_handler(conv_handler)
-bot_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
-bot_app.add_handler(MessageHandler(filters.VOICE, voice_handler))
-
-@app.get("/")
-async def root():
-    return {"message": "English Talking Bot is running."}
-
-@app.on_event("startup")
-async def startup_event():
-    await bot_app.initialize()
-    await bot_app.start()
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    await bot_app.stop()
-    await bot_app.shutdown()
+application.add_handler(conv_handler)
+application.add_handler(MessageHandler(filters.VOICE, voice_handler))
+application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
 @app.post("/webhook")
-async def telegram_webhook(req: Request):
-    data = await req.json()
-    update = Update.de_json(data, bot_app.bot)
-    await bot_app.process_update(update)
-    return {"ok": True}
+async def webhook_handler(request: Request):
+    data = await request.json()
+    update = Update.de_json(data, application.bot)
+    await application.process_update(update)
+    return {"status": "ok"}
