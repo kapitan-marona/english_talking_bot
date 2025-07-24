@@ -100,10 +100,11 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return ConversationHandler.END
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text.strip()
+    user_text = update.message.text.strip().lower()
 
-    if user_text == "📢 Voice mode":
+    if user_text in ["📢 voice mode", "🔊 voice mode", "voice mode"]:
         context.user_data["voice_mode"] = True
+        context.user_data["mode_button_shown"] = True
         context.user_data["system_prompt"] = generate_system_prompt(
             context.user_data.get("language", "English"),
             context.user_data.get("level", "B1-B2"),
@@ -114,8 +115,9 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
         return
 
-    elif user_text == "⌨️ Text mode":
+    elif user_text in ["⌨️ text mode", "text mode"]:
         context.user_data["voice_mode"] = False
+        context.user_data["mode_button_shown"] = True
         context.user_data["system_prompt"] = generate_system_prompt(
             context.user_data.get("language", "English"),
             context.user_data.get("level", "B1-B2"),
@@ -137,7 +139,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     system_prompt = context.user_data["system_prompt"]
     chat_history = context.user_data.setdefault("chat_history", [])
-    chat_history.append({"role": "user", "content": user_text})
+    chat_history.append({"role": "user", "content": update.message.text.strip()})
     context.user_data["chat_history"] = chat_history[-40:]
 
     messages = [{"role": "system", "content": system_prompt}] + context.user_data["chat_history"]
@@ -161,95 +163,3 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         await update.message.reply_text(f"Ошибка генерации ответа: {e}")
-
-async def speak_and_reply_google_tts(text: str, update: Update, context):
-    level = context.user_data.get("level", "B1-B2")
-    learn_lang = context.user_data.get("learn_lang", "English")
-    speaking_rate = 0.85 if level == "A1-A2" else 1.0
-
-    language_code = {
-        "en": "en-US", "fr": "fr-FR", "es": "es-ES", "de": "de-DE",
-        "it": "it-IT", "pt": "pt-PT", "sv": "sv-SE", "ru": "ru-RU"
-    }.get(LANG_CODES.get(learn_lang, "en"), "en-US")
-
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-    voice = texttospeech.VoiceSelectionParams(
-        language_code=language_code,
-        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
-    )
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3,
-        speaking_rate=speaking_rate
-    )
-    client_tts = texttospeech.TextToSpeechClient()
-    response = client_tts.synthesize_speech(
-        input=synthesis_input, voice=voice, audio_config=audio_config
-    )
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmpfile:
-        tmpfile.write(response.audio_content)
-        tmpfile_path = tmpfile.name
-
-    async with aiofiles.open(tmpfile_path, "rb") as audio_file:
-        await update.message.reply_voice(voice=audio_file)
-    os.remove(tmpfile_path)
-
-async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    voice = update.message.voice
-    context.user_data["voice_mode"] = True
-    context.user_data["system_prompt"] = generate_system_prompt(
-        context.user_data.get("language", "English"),
-        context.user_data.get("level", "B1-B2"),
-        context.user_data.get("style", "Casual"),
-        context.user_data.get("learn_lang", "English"),
-        voice_mode=True
-    )
-
-    lang_code = LANG_CODES.get(context.user_data.get("learn_lang", "English"), "en")
-    if lang_code not in WHISPER_SUPPORTED_LANGS:
-        lang = context.user_data.get("language", "English")
-        await update.message.reply_text(UNSUPPORTED_LANGUAGE_MESSAGE.get(lang, UNSUPPORTED_LANGUAGE_MESSAGE["English"]))
-        return
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        ogg_path = f"{tmpdir}/voice.ogg"
-        mp3_path = f"{tmpdir}/voice.mp3"
-
-        file = await context.bot.get_file(voice.file_id)
-        await file.download_to_drive(ogg_path)
-        subprocess.run(["ffmpeg", "-i", ogg_path, mp3_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-        try:
-            with open(mp3_path, "rb") as audio_file:
-                transcript = client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    response_format="text",
-                    language=lang_code
-                )
-
-            class FakeMessage:
-                def __init__(self, text, original):
-                    self.text = text
-                    self.chat_id = original.chat_id
-                    self.chat = original.chat
-                    self.from_user = original.from_user
-                    self.message_id = original.message_id
-                    self._original = original
-
-                async def reply_text(self, *args, **kwargs):
-                    return await self._original.reply_text(*args, **kwargs)
-
-                async def reply_voice(self, *args, **kwargs):
-                    return await self._original.reply_voice(*args, **kwargs)
-
-            fake_message = FakeMessage(transcript.strip(), update.message)
-            fake_update = Update(update.update_id, message=fake_message)
-            await chat(fake_update, context)
-
-        except Exception as e:
-            await update.message.reply_text(f"Ошибка распознавания речи: {e}")
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("Отмена.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END
