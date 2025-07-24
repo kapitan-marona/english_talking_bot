@@ -8,10 +8,11 @@ from handlers import (
     start, learn_lang_choice, level_choice, style_choice,
     chat, voice_handler, cancel
 )
-from config import TELEGRAM_TOKEN
+from config import token
 
-application = Application.builder().token(TELEGRAM_TOKEN).build()
 app = FastAPI()
+
+application = Application.builder().token(token).build()
 
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
@@ -26,6 +27,19 @@ conv_handler = ConversationHandler(
 application.add_handler(conv_handler)
 application.add_handler(MessageHandler(filters.VOICE, voice_handler))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
+
+
+@app.on_event("startup")
+async def on_startup():
+    await application.initialize()
+    await application.start()
+
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await application.stop()
+    await application.shutdown()
+
 
 @app.post("/webhook")
 async def webhook_handler(request: Request):
