@@ -6,7 +6,7 @@ from telegram.ext import (
 )
 from handlers import (
     start, learn_lang_choice, level_choice, style_choice,
-    chat, voice_handler, cancel
+    chat, cancel
 )
 from config import TELEGRAM_TOKEN
 
@@ -25,7 +25,6 @@ conv_handler = ConversationHandler(
 )
 
 application.add_handler(conv_handler)
-application.add_handler(MessageHandler(filters.VOICE, voice_handler))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
 @app.post("/webhook")
