@@ -136,8 +136,12 @@ async def speak_and_reply(text: str, update: Update, context: ContextTypes.DEFAU
 
     os.remove(temp_file_name)
 
-async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_text = update.message.text.strip()
+async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
+    user_text = user_text_override or (update.message.text if update.message else None)
+    if not user_text:
+        await update.message.reply_text("Не удалось обработать сообщение.")
+        return
+    user_text = user_text.strip()
 
     if user_text.lower() in ["🔊 voice mode", "voice mode"]:
         context.user_data["voice_mode"] = True
@@ -294,6 +298,4 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
         os.remove(ogg_path)
         os.remove(wav_path)
 
-    # Подставляем распознанный текст как будто это обычное сообщение
-    update.message.text = transcript.strip()
-    await chat(update, context)
+    await chat(update, context, user_text_override=transcript.strip())
