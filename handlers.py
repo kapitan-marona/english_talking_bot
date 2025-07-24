@@ -45,13 +45,10 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
     native_lang = "Russian" if interface_lang == "Русский" else "English"
     mode = "voice" if voice_mode else "text"
 
-    language_level_note = (
-            "Use short, simple sentences and basic vocabulary suitable for a beginner (A1-A2 level)."
-        )
+    if level == "A1-A2":
+        language_level_note = "Use short, simple sentences and basic vocabulary suitable for a beginner (A1-A2 level)."
     elif level == "B1-B2":
-        language_level_note = (
-            "Use richer vocabulary and intermediate grammar structures suitable for B1-B2 learners."
-        )
+        language_level_note = "Use richer vocabulary and intermediate grammar structures suitable for B1-B2 learners."
     else:
         language_level_note = ""
 
