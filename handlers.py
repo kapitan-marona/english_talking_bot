@@ -54,29 +54,63 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
     else:
         language_level_note = ""
 
-    if native_lang == "Russian":
-        clarification_note = "When appropriate, briefly explain difficult words or expressions in Russian using simple terms."
-    elif native_lang == "English":
-        clarification_note = "When appropriate, briefly explain difficult words or expressions in English using simple terms."
+    # Explain words in the appropriate language
+    if voice_mode:
+        # In voice mode, explanations should be in the target language
+        clarification_note = f"When appropriate, briefly explain difficult words or expressions in {learn_lang} using simple terms."
     else:
-        clarification_note = ""
+        # In text mode, use native language for explanations
+        if native_lang == "Russian":
+            clarification_note = "When appropriate, briefly explain difficult words or expressions in Russian using simple terms."
+        else:
+            clarification_note = "When appropriate, briefly explain difficult words or expressions in English using simple terms."
 
+    # Style handling with explicit mode instructions
     if style.lower() == "casual":
-        return (
-            f"You are a funny, friendly, and engaging conversation partner who helps people learn {learn_lang}. "
-            f"Always respond in {learn_lang}. Use slang, jokes, emoji, and a casual tone. Your job is to make the conversation feel natural, fun, and light-hearted. "
-            f"Even if a user makes a mistake, respond with kindness and a playful tone. {language_level_note} {clarification_note}"
-        )
+        if voice_mode:
+            return (
+                f"You are in voice mode. You are a fun and engaging conversation partner helping people learn {learn_lang}. "
+                f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
+                f"Use slang and a playful tone, but do not use emojis. Keep the conversation light-hearted and friendly. "
+                f"{language_level_note} {clarification_note}"
+            )
+        else:
+            return (
+                f"You are in text mode. You are a funny, friendly, and engaging conversation partner who helps people learn {learn_lang}. "
+                f"Always respond in {learn_lang}. Use slang, jokes, emoji, and a casual tone. "
+                f"Your job is to make the conversation feel natural, fun, and light-hearted. "
+                f"Even if a user makes a mistake, respond with kindness and a playful tone. {language_level_note} {clarification_note}"
+            )
+
     elif style.lower() == "formal":
-        return (
-            f"You are a professional and engaging language tutor helping people practice {learn_lang}. "
+        if voice_mode:
+            return (
+                f"You are in voice mode. You are a professional and engaging language tutor helping people practice {learn_lang}. "
+                f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
+                f"Use polite, clear, and structured responses. Maintain a professional tone: no emojis, no slang. "
+                f"Keep your phrasing suitable for spoken delivery. "
+                f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
+                f"{language_level_note} {clarification_note}"
+            )
+        else:
+            return (
+                f"You are in text mode. You are a professional and engaging language tutor helping people practice {learn_lang}. "
+                f"Always respond in {learn_lang}. Use polite, clear, and structured responses. Maintain a professional tone: no emojis, no slang. "
+                f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
+                f"{language_level_note} {clarification_note}"
+            )
+            f"You are in {mode} mode. You are a professional and engaging language tutor helping people practice {learn_lang}. "
             f"Always respond in {learn_lang}. Use polite, clear, and structured responses. Maintain a professional tone: no emojis, no slang. "
-            f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. {language_level_note} {clarification_note}"
+            f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
+            f"{language_level_note} {clarification_note}"
         )
+
     else:
         return (
-            f"You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {language_level_note} {clarification_note}"
+            f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. "
+            f"{language_level_note} {clarification_note}"
         )
+
 
 def build_correction_instruction(native_lang, learn_lang, level):
     if level == "A1-A2":
