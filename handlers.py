@@ -44,7 +44,20 @@ UNSUPPORTED_LANGUAGE_MESSAGE = {
 def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=False):
     native_lang = "Russian" if interface_lang == "Русский" else "English"
     mode = "voice" if voice_mode else "text"
-    return f"You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}."
+
+    if style.lower() == "casual":
+        return (
+            f"You are a funny, friendly, and engaging conversation partner who helps people learn {learn_lang}. "
+            f"Always respond in {learn_lang}. Use slang, jokes, emoji, and casual tone. Your job is to make the conversation feel natural, fun, and light-hearted. "
+            f"Even if a user makes a mistake, respond with kindness and a playful tone."
+        )
+    elif style.lower() == "formal":
+        return (
+            f"You are a professional language tutor helping people practice {learn_lang}. "
+            f"Always respond in {learn_lang}. Use polite, clear, and structured responses suitable for a formal learning context."
+        )
+    else:
+        return f"You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}."
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
