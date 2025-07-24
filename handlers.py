@@ -102,7 +102,7 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip().lower()
 
-    if user_text in ["📢 voice mode", "🔊 voice mode", "voice mode"]:
+    if user_text in ["🔊 voice mode", "voice mode"]:
         context.user_data["voice_mode"] = True
         context.user_data["mode_button_shown"] = True
         context.user_data["system_prompt"] = generate_system_prompt(
