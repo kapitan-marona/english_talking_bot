@@ -95,6 +95,37 @@ def build_correction_instruction(native_lang, learn_lang, level):
         )
     return ""
 
+async def speak_and_reply(text: str, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    learn_lang = context.user_data.get("learn_lang", "English")
+    lang_code = LANG_CODES.get(learn_lang, "en")
+
+    client_tts = texttospeech.TextToSpeechClient()
+    synthesis_input = texttospeech.SynthesisInput(text=text)
+
+    voice_params = texttospeech.VoiceSelectionParams(
+        language_code=lang_code,
+        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL,
+    )
+
+    audio_config = texttospeech.AudioConfig(
+        audio_encoding=texttospeech.AudioEncoding.MP3,
+    )
+
+    response = client_tts.synthesize_speech(
+        input=synthesis_input,
+        voice=voice_params,
+        audio_config=audio_config,
+    )
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as out:
+        out.write(response.audio_content)
+        temp_file_name = out.name
+
+    with open(temp_file_name, "rb") as audio_file:
+        await update.message.reply_voice(audio_file, caption=text)
+
+    os.remove(temp_file_name)
+
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip()
 
@@ -135,7 +166,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_history = context.user_data.setdefault("chat_history", [])
 
     chat_history.append({"role": "user", "content": user_text})
-    context.user_data["chat_history"] = chat_history[-40:]  # Keep last 40 messages total
+    context.user_data["chat_history"] = chat_history[-40:]
     messages = [{"role": "system", "content": system_prompt}] + context.user_data["chat_history"]
 
     try:
@@ -151,7 +182,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if context.user_data.get("voice_mode"):
             await speak_and_reply(answer, update, context)
         else:
-            await update.message.reply_text(answer, reply_markup=text_mode_button if context.user_data.get("voice_mode") else voice_mode_button)
+            await update.message.reply_text(answer, reply_markup=voice_mode_button)
 
     except Exception as e:
         await update.message.reply_text(f"Ошибка: {e}")
