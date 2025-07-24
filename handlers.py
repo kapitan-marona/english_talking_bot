@@ -45,19 +45,39 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
     native_lang = "Russian" if interface_lang == "Русский" else "English"
     mode = "voice" if voice_mode else "text"
 
+    language_level_note = (
+            "Use short, simple sentences and basic vocabulary suitable for a beginner (A1-A2 level)."
+        )
+    elif level == "B1-B2":
+        language_level_note = (
+            "Use richer vocabulary and intermediate grammar structures suitable for B1-B2 learners."
+        )
+    else:
+        language_level_note = ""
+
+    if native_lang == "Russian":
+        clarification_note = "When appropriate, briefly explain difficult words or expressions in Russian using simple terms."
+    elif native_lang == "English":
+        clarification_note = "When appropriate, briefly explain difficult words or expressions in English using simple terms."
+    else:
+        clarification_note = ""
+
     if style.lower() == "casual":
         return (
             f"You are a funny, friendly, and engaging conversation partner who helps people learn {learn_lang}. "
-            f"Always respond in {learn_lang}. Use slang, jokes, emoji, and casual tone. Your job is to make the conversation feel natural, fun, and light-hearted. "
-            f"Even if a user makes a mistake, respond with kindness and a playful tone."
+            f"Always respond in {learn_lang}. Use slang, jokes, emoji, and a casual tone. Your job is to make the conversation feel natural, fun, and light-hearted. "
+            f"Even if a user makes a mistake, respond with kindness and a playful tone. {language_level_note} {clarification_note}"
         )
     elif style.lower() == "formal":
         return (
-            f"You are a professional language tutor helping people practice {learn_lang}. "
-            f"Always respond in {learn_lang}. Use polite, clear, and structured responses suitable for a formal learning context."
+            f"You are a professional and engaging language tutor helping people practice {learn_lang}. "
+            f"Always respond in {learn_lang}. Use polite, clear, and structured responses. Maintain a professional tone: no emojis, no slang. "
+            f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. {language_level_note} {clarification_note}"
         )
     else:
-        return f"You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}."
+        return (
+            f"You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {language_level_note} {clarification_note}"
+        )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
