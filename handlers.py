@@ -1,6 +1,8 @@
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
 from telegram.ext import ConversationHandler, ContextTypes
 from config import client
+import os
+import base64
 from google.cloud import texttospeech
 import aiofiles
 import tempfile
@@ -98,6 +100,14 @@ def build_correction_instruction(native_lang, learn_lang, level):
 async def speak_and_reply(text: str, update: Update, context: ContextTypes.DEFAULT_TYPE):
     learn_lang = context.user_data.get("learn_lang", "English")
     lang_code = LANG_CODES.get(learn_lang, "en")
+
+    key_b64 = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_BASE64")
+    if key_b64:
+        import json
+        key_json = base64.b64decode(key_b64).decode("utf-8")
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as key_file:
+            key_file.write(key_json.encode("utf-8"))
+            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_file.name
 
     client_tts = texttospeech.TextToSpeechClient()
     synthesis_input = texttospeech.SynthesisInput(text=text)
