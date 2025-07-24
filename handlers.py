@@ -99,11 +99,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
                 f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
                 f"{language_level_note} {clarification_note}"
             )
-            f"You are in {mode} mode. You are a professional and engaging language tutor helping people practice {learn_lang}. "
-            f"Always respond in {learn_lang}. Use polite, clear, and structured responses. Maintain a professional tone: no emojis, no slang. "
-            f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
-            f"{language_level_note} {clarification_note}"
-        )
+            
 
     else:
         return (
