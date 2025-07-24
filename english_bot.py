@@ -8,9 +8,9 @@ from handlers import (
     start, learn_lang_choice, level_choice, style_choice,
     chat, voice_handler, cancel
 )
-from config import token
+from config import TELEGRAM_TOKEN
 
-application = Application.builder().token(token).build()
+application = Application.builder().token(TELEGRAM_TOKEN).build()
 app = FastAPI()
 
 conv_handler = ConversationHandler(
