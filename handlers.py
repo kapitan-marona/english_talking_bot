@@ -1,4 +1,3 @@
-# Импортируем необходимые модули Telegram Bot API и другие утилиты
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
 from telegram.ext import ConversationHandler, ContextTypes
 from config import client
@@ -6,14 +5,10 @@ from google.cloud import texttospeech
 import aiofiles
 import tempfile
 import os
-import base64
 import subprocess
-from io import BytesIO
 
-# Conversation steps
 LEARN_LANG, LEVEL, STYLE = range(3)
 
-# Interface and language selection
 voice_mode_button = ReplyKeyboardMarkup(
     [[KeyboardButton("🔊 Voice mode")]], resize_keyboard=True
 )
@@ -32,7 +27,6 @@ level_markup = ReplyKeyboardMarkup(level_keyboard, one_time_keyboard=True, resiz
 
 style_keyboard_ru = [["Casual", "Formal"]]
 
-# Словарь языков для преобразования названия в код ISO
 LANG_CODES = {
     "English": "en", "French": "fr", "Spanish": "es", "German": "de", "Italian": "it",
     "Portuguese": "pt", "Finnish": "fi", "Norwegian": "no", "Swedish": "sv", "Russian": "ru"
@@ -47,81 +41,10 @@ UNSUPPORTED_LANGUAGE_MESSAGE = {
     "English": "This language is not yet supported for voice recognition. You can keep using voice mode, but please send your questions as text. Try using voice input on your keyboard — it will convert your speech to text, and the bot will reply with voice!"
 }
 
-# Настройки тона, грамматики и стиля для генерации системного промпта
-TONE_CONFIG = {
-    "A1-A2": {
-        "casual": {
-            "text": {
-                "tone": "Friendly and humorous. Use emojis and slang, explain slang in {native_lang}.",
-                "grammar": "Use simple grammar and short sentences in {learn_lang}.",
-                "correction": "Explain mistakes in {native_lang}."
-            },
-            "voice": {
-                "tone": "Friendly and humorous. Use slang, no emojis.",
-                "grammar": "Use simple grammar and short sentences in {learn_lang}.",
-                "correction": "Correct mistakes gently and explain in {learn_lang}."
-            }
-        },
-        "formal": {
-            "text": {
-                "tone": "Relaxed, modern, open to dialogue, confident and formal. No slang or emojis.",
-                "grammar": "Use simple grammar and short sentences in {learn_lang}.",
-                "correction": "Explain mistakes in {native_lang}."
-            },
-            "voice": {
-                "tone": "Relaxed, modern, open to dialogue, confident and formal. No slang or emojis.",
-                "grammar": "Use simple grammar and short sentences in {learn_lang}.",
-                "correction": "Correct mistakes gently and explain in {learn_lang}."
-            }
-        }
-    },
-    "B1-B2": {
-        "casual": {
-            "text": {
-                "tone": "Friendly and humorous. Use emojis and slang.",
-                "grammar": "Use richer grammar and vocabulary in {learn_lang}.",
-                "correction": "Correct and explain mistakes in {learn_lang}."
-            },
-            "voice": {
-                "tone": "Friendly and humorous. Use slang, no emojis.",
-                "grammar": "Use richer grammar and vocabulary in {learn_lang}.",
-                "correction": "Correct and explain mistakes in {learn_lang}."
-            }
-        },
-        "formal": {
-            "text": {
-                "tone": "Relaxed, modern, open to dialogue, confident and formal. No slang or emojis.",
-                "grammar": "Use richer grammar and vocabulary in {learn_lang}.",
-                "correction": "Correct and explain mistakes in {learn_lang}."
-            },
-            "voice": {
-                "tone": "Relaxed, modern, open to dialogue, confident and formal. No slang or emojis.",
-                "grammar": "Use richer grammar and vocabulary in {learn_lang}.",
-                "correction": "Correct and explain mistakes in {learn_lang}."
-            }
-        }
-    }
-}
-
-# Генерация инструкций (system prompt) для ChatGPT в зависимости от настроек пользователя
 def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=False):
     native_lang = "Russian" if interface_lang == "Русский" else "English"
     mode = "voice" if voice_mode else "text"
-    style_key = style.lower()
-
-    config = TONE_CONFIG.get(level, {}).get(style_key, {}).get(mode)
-    if not config:
-        return f"You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}."
-
-    tone = config["tone"].format(native_lang=native_lang, learn_lang=learn_lang)
-    grammar = config["grammar"].format(native_lang=native_lang, learn_lang=learn_lang)
-    correction = config["correction"].format(native_lang=native_lang, learn_lang=learn_lang)
-
-    return (
-        f"You are a helpful assistant for learning {learn_lang}. "
-        f"{tone} {grammar} {correction} "
-        f"Always respond in {learn_lang}. Keep the conversation going with questions in context."
-    )
+    return f"You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}."
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
@@ -135,7 +58,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return LEARN_LANG
 
-
 async def learn_lang_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["learn_lang"] = update.message.text
     lang = context.user_data["language"]
@@ -145,7 +67,6 @@ async def learn_lang_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
     return LEVEL
 
-
 async def level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["level"] = update.message.text
     lang = context.user_data["language"]
@@ -154,7 +75,6 @@ async def level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
         reply_markup=ReplyKeyboardMarkup(style_keyboard_ru, one_time_keyboard=True, resize_keyboard=True)
     )
     return STYLE
-
 
 async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data["style"] = update.message.text
@@ -179,38 +99,30 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     context.user_data["system_prompt"] = prompt
     return ConversationHandler.END
 
-
-# Основная логика общения: обрабатывает текстовые запросы и отвечает в зависимости от режима
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text.strip()
 
     if user_text == "📢 Voice mode":
         context.user_data["voice_mode"] = True
-
-        # Обновляем system_prompt под голосовой режим
         context.user_data["system_prompt"] = generate_system_prompt(
-            interface_lang=context.user_data.get("language", "English"),
-            level=context.user_data.get("level", "B1-B2"),
-            style=context.user_data.get("style", "Casual"),
-            learn_lang=context.user_data.get("learn_lang", "English"),
+            context.user_data.get("language", "English"),
+            context.user_data.get("level", "B1-B2"),
+            context.user_data.get("style", "Casual"),
+            context.user_data.get("learn_lang", "English"),
             voice_mode=True
         )
-
         await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
         return
 
     elif user_text == "⌨️ Text mode":
         context.user_data["voice_mode"] = False
-
-        # Обновляем system_prompt под текстовый режим
         context.user_data["system_prompt"] = generate_system_prompt(
-            interface_lang=context.user_data.get("language", "English"),
-            level=context.user_data.get("level", "B1-B2"),
-            style=context.user_data.get("style", "Casual"),
-            learn_lang=context.user_data.get("learn_lang", "English"),
+            context.user_data.get("language", "English"),
+            context.user_data.get("level", "B1-B2"),
+            context.user_data.get("style", "Casual"),
+            context.user_data.get("learn_lang", "English"),
             voice_mode=False
         )
-
         await update.message.reply_text("Text mode enabled.", reply_markup=voice_mode_button)
         return
 
@@ -241,7 +153,6 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if context.user_data.get("voice_mode"):
             try:
-                print("[Voice mode] sending audio reply...")
                 await speak_and_reply_google_tts(answer, update, context)
             except Exception:
                 await update.message.reply_text(answer)
@@ -257,33 +168,23 @@ async def speak_and_reply_google_tts(text: str, update: Update, context):
     speaking_rate = 0.85 if level == "A1-A2" else 1.0
 
     language_code = {
-        "en": "en-US",
-        "fr": "fr-FR",
-        "es": "es-ES",
-        "de": "de-DE",
-        "it": "it-IT",
-        "pt": "pt-PT",
-        "sv": "sv-SE",
-        "ru": "ru-RU"
+        "en": "en-US", "fr": "fr-FR", "es": "es-ES", "de": "de-DE",
+        "it": "it-IT", "pt": "pt-PT", "sv": "sv-SE", "ru": "ru-RU"
     }.get(LANG_CODES.get(learn_lang, "en"), "en-US")
-    voice_name = pick_best_voice(language_code)
-    if not voice_name:
-        language_code = "en-US"
-        voice_name = pick_best_voice(language_code)
 
-    print(f"[TTS] Using voice: {voice_name} for language_code: {language_code}")
     synthesis_input = texttospeech.SynthesisInput(text=text)
     voice = texttospeech.VoiceSelectionParams(
         language_code=language_code,
-        name=voice_name,
         ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL
     )
     audio_config = texttospeech.AudioConfig(
         audio_encoding=texttospeech.AudioEncoding.MP3,
         speaking_rate=speaking_rate
     )
-    response = google_tts_client.synthesize_speech(input=synthesis_input, voice=voice, audio_config=audio_config)
-    print("[TTS] Audio response generated.")
+    client_tts = texttospeech.TextToSpeechClient()
+    response = client_tts.synthesize_speech(
+        input=synthesis_input, voice=voice, audio_config=audio_config
+    )
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmpfile:
         tmpfile.write(response.audio_content)
@@ -293,15 +194,14 @@ async def speak_and_reply_google_tts(text: str, update: Update, context):
         await update.message.reply_voice(voice=audio_file)
     os.remove(tmpfile_path)
 
-
 async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     voice = update.message.voice
     context.user_data["voice_mode"] = True
     context.user_data["system_prompt"] = generate_system_prompt(
-        interface_lang=context.user_data.get("language", "English"),
-        level=context.user_data.get("level", "B1-B2"),
-        style=context.user_data.get("style", "Casual"),
-        learn_lang=context.user_data.get("learn_lang", "English"),
+        context.user_data.get("language", "English"),
+        context.user_data.get("level", "B1-B2"),
+        context.user_data.get("style", "Casual"),
+        context.user_data.get("learn_lang", "English"),
         voice_mode=True
     )
 
@@ -349,7 +249,6 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         except Exception as e:
             await update.message.reply_text(f"Ошибка распознавания речи: {e}")
-
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Отмена.", reply_markup=ReplyKeyboardRemove())
