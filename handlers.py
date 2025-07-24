@@ -168,6 +168,47 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     )
     return LEARN_LANG
 
+async def learn_lang_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["learn_lang"] = update.message.text
+    lang = context.user_data["language"]
+    await update.message.reply_text(
+        "Выбери уровень языка:" if lang == "Русский" else "Choose your level:",
+        reply_markup=level_markup
+    )
+    return LEVEL
+
+async def level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["level"] = update.message.text
+    lang = context.user_data["language"]
+    await update.message.reply_text(
+        "Выбери стиль общения:" if lang == "Русский" else "Choose your conversation style:",
+        reply_markup=ReplyKeyboardMarkup(style_keyboard_ru, one_time_keyboard=True, resize_keyboard=True)
+    )
+    return STYLE
+
+async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["style"] = update.message.text
+    context.user_data["voice_mode"] = False
+    context.user_data["mode_button_shown"] = False
+
+    lang = context.user_data["language"]
+    msg = (
+        "Отлично, давай просто поболтаем! 😎 С чего хочешь начать?"
+        if lang == "Русский" else
+        "Great! Let's chat. What would you like to start with?"
+    )
+    await update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
+
+    prompt = generate_system_prompt(
+        interface_lang=context.user_data["language"],
+        level=context.user_data["level"],
+        style=context.user_data["style"],
+        learn_lang=context.user_data["learn_lang"],
+        voice_mode=False
+    )
+    context.user_data["system_prompt"] = prompt
+    return ConversationHandler.END
+
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     await update.message.reply_text("Диалог отменён.", reply_markup=ReplyKeyboardRemove())
