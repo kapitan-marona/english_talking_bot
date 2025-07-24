@@ -12,7 +12,7 @@ from config import TELEGRAM_TOKEN as token
 
 app = FastAPI()
 
-application = Application.builder().token(TELEGRAM_TOKEN).build()
+application = Application.builder().token(token).build()
 
 conv_handler = ConversationHandler(
     entry_points=[CommandHandler("start", start)],
