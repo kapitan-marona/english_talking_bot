@@ -254,3 +254,46 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.clear()
     await update.message.reply_text("Диалог отменён.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
+
+async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    learn_lang = context.user_data.get("learn_lang", "English")
+    lang_code = LANG_CODES.get(learn_lang, "en")
+
+    if lang_code not in WHISPER_SUPPORTED_LANGS:
+        await update.message.reply_text(UNSUPPORTED_LANGUAGE_MESSAGE.get(
+            context.user_data.get("language", "English"),
+            "Voice recognition is not supported for this language. Please use text input."
+        ))
+        return
+
+    voice = update.message.voice
+    if not voice:
+        await update.message.reply_text("Не удалось получить голосовое сообщение.")
+        return
+
+    file = await context.bot.get_file(voice.file_id)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".ogg") as temp_ogg:
+        await file.download_to_drive(temp_ogg.name)
+        ogg_path = temp_ogg.name
+
+    wav_path = ogg_path.replace(".ogg", ".wav")
+    subprocess.run(["ffmpeg", "-i", ogg_path, "-ar", "16000", "-ac", "1", wav_path])
+
+    try:
+        with open(wav_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                response_format="text",
+                language=lang_code
+            )
+    except Exception as e:
+        await update.message.reply_text(f"Ошибка при распознавании речи: {e}")
+        return
+    finally:
+        os.remove(ogg_path)
+        os.remove(wav_path)
+
+    # Подставляем распознанный текст как будто это обычное сообщение
+    update.message.text = transcript.strip()
+    await chat(update, context)
