@@ -1,7 +1,14 @@
-
 from telegram import Update
 from telegram.ext import ContextTypes
 from handlers.conversation_validated_with_promo import promo_completed
+
+from datetime import datetime
+
+PROMO_EXPIRATION = datetime(2025, 8, 26)
+
+def is_expired():
+    return datetime.now() > PROMO_EXPIRATION
+
 
 VALID_PROMOCODES = {
     "БРАТСКИЙ_ЧЕК": "🎁 Дружеский бонус активирован!"
@@ -9,6 +16,10 @@ VALID_PROMOCODES = {
 USED_PROMOCODES = set()
 
 async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if is_expired():
+        await update.message.reply_text("⏰ Срок действия промокода истёк. Но не переживай — скоро будут новые!")
+        return
+
     if not context.args:
         await update.message.reply_text("Введите промокод после команды, например: /promo БРАТСКИЙ_ЧЕК")
         return
