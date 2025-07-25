@@ -3,119 +3,80 @@ from telegram.ext import ContextTypes
 from config import client
 from .voice import speak_and_reply
 from .keyboards import voice_mode_button, text_mode_button
-import asyncio
-
-LANG_CODES = {
-    "English": "en", "French": "fr", "Spanish": "es", "German": "de", "Italian": "it",
-    "Portuguese": "pt", "Finnish": "fi", "Norwegian": "no", "Swedish": "sv", "Russian": "ru"
-}
-
-WHISPER_SUPPORTED_LANGS = {
-    "en", "fr", "es", "de", "it", "pt", "sv", "ru"
-}
-
-UNSUPPORTED_LANGUAGE_MESSAGE = {
-    "Русский": "Этот язык пока не поддерживается для распознавания речи. Вы можете продолжать использовать голосовой режим, но отправлять вопросы нужно в текстовом виде. Попробуйте голосовой ввод на клавиатуре — он преобразует вашу речь в текст, а бот ответит голосом!",
-    "English": "This language is not yet supported for voice recognition. You can keep using voice mode, but please send your questions as text. Try using voice input on your keyboard — it will convert your speech to text, and the bot will reply with voice!"
-}
+import re
 
 def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=False):
     native_lang = "Russian" if interface_lang == "Русский" else "English"
     mode = "voice" if voice_mode else "text"
 
-    if level == "A1-A2":
-        language_level_note = "Use short, simple sentences and basic vocabulary suitable for a beginner (A1-A2 level)."
-    elif level == "B1-B2":
-        language_level_note = "Use richer vocabulary and intermediate grammar structures suitable for B1-B2 learners."
-    else:
-        language_level_note = ""
+    level_note = {
+        "A1-A2": "Use short, simple sentences and basic vocabulary suitable for a beginner (A1-A2 level).",
+        "B1-B2": "Use richer vocabulary and intermediate grammar structures suitable for B1-B2 learners."
+    }.get(level, "")
 
     if voice_mode:
         clarification_note = f"When appropriate, briefly explain difficult words or expressions in {learn_lang} using simple terms."
     else:
-        if native_lang == "Russian":
-            clarification_note = "When appropriate, briefly explain difficult words or expressions in Russian using simple terms."
-        else:
-            clarification_note = "When appropriate, briefly explain difficult words or expressions in English using simple terms."
+        clarification_note = "When appropriate, briefly explain difficult words or expressions in {} using simple terms.".format(native_lang)
 
-    if style.lower() == "casual":
-        if voice_mode:
-            return (
-                f"You are in voice mode. You are a fun and engaging conversation partner helping people learn {learn_lang}. "
-                f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
-                f"Use slang and a playful tone, but do not use emojis. Keep the conversation light-hearted and friendly. "
-                f"{language_level_note} {clarification_note}"
-                f"Always put corrected or translated words and phrases in double quotes."
-            )
-        else:
-            return (
-                f"You are in text mode. You are a funny, friendly, and engaging conversation partner who helps people learn {learn_lang}. "
-                f"Always respond in {learn_lang}. Use slang, jokes, emoji, and a casual tone. "
-                f"Your job is to make the conversation feel natural, fun, and light-hearted. "
-                f"Even if a user makes a mistake, respond with kindness and a playful tone. {language_level_note} {clarification_note}"
-                f"Always put corrected or translated words and phrases in double quotes."
-            )
-    elif style.lower() == "formal":
-        if voice_mode:
-            return (
-                f"You are in voice mode. You are a professional and engaging language tutor helping people practice {learn_lang}. "
-                f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
-                f"Use polite, clear, and structured responses. Maintain a professional tone: no emojis, no slang. "
-                f"Keep your phrasing suitable for spoken delivery. "
-                f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
-                f"{language_level_note} {clarification_note}"
-                f"Always put corrected or translated words and phrases in double quotes."
-            )
-        else:
-            return (
-                f"You are in text mode. You are a professional and engaging language tutor helping people practice {learn_lang}. "
-                f"Always respond in {learn_lang}. Use polite, clear, and structured responses. Maintain a professional tone: no emojis, no slang. "
-                f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
-                f"{language_level_note} {clarification_note}"
-                f"Always put corrected or translated words and phrases in double quotes."
-            )
-    else:
-        return (
-            f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. "
-            f"{language_level_note} {clarification_note}"
-            f"Always put corrected or translated words and phrases in double quotes."
-        )
+    style_note = {
+        "casual": {
+            True: f"You are in voice mode. You are a fun and engaging conversation partner helping people learn {learn_lang}. "
+                  f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
+                  f"Use slang and a playful tone, but no emojis. {level_note} {clarification_note}"
+        },
+        "formal": {
+            True: f"You are in voice mode. You are a professional language tutor helping people practice {learn_lang}. "
+                  f"Always respond in {learn_lang}. Keep your phrasing suitable for spoken delivery. "
+                  f"Polite, clear, professional. {level_note} {clarification_note}",
+            False: f"You are in text mode. You are a professional language tutor helping people practice {learn_lang}. "
+                   f"Always respond in {learn_lang}. Be clear, structured, and polite. {level_note} {clarification_note}"
+        }
+    }
+
+    style_key = style.lower()
+    return (
+        style_note.get(style_key, {}).get(voice_mode) or
+        f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {level_note} {clarification_note}"
+    ) + " Always put corrected or translated words and phrases in double quotes."
 
 def build_correction_instruction(native_lang, learn_lang, level):
     if level == "A1-A2":
-        if native_lang == "Русский":
-            return (
-                "Если пользователь делает ошибку, вежливо укажи на неё и объясни на русском языке, как правильно. "
-                "Приводи короткие примеры и переформулировки, чтобы пользователь понял правильный вариант."
-            )
-        else:
-            return (
-                "If the user makes a mistake, gently point it out and explain it in English. "
-                "Give short examples and reformulations to help the learner understand the correct usage."
-            )
-    elif level == "B1-B2":
         return (
-            f"If the user makes a mistake, gently correct them and explain in {learn_lang} how to improve. "
-            f"Include clear examples and rephrase their sentence if needed to show the correct usage."
+            "Если пользователь делает ошибку, вежливо укажи на неё и объясни на русском языке, как правильно. "
+            "Приводи короткие примеры и переформулировки." if native_lang == "Русский" else
+            "If the user makes a mistake, gently point it out and explain in English. Give short examples and reformulations."
         )
+    elif level == "B1-B2":
+        return f"If the user makes a mistake, gently correct them and explain in {learn_lang} with examples."
     return ""
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
     user_text = user_text_override or (update.message.text if update.message else None)
-    
     if not user_text:
         await update.message.reply_text("Не удалось обработать сообщение.")
         return
 
-    user_text = user_text.strip()
+    user_text = user_text.strip().lower()
 
-    # 📋 Обработка меню — этот блок должен быть внутри функции
-    if user_text.lower() in ["📋 menu", "menu"]:
+    if user_text in ["📋 menu", "menu"]:
         from .menu import show_menu
         await show_menu(update, context)
         return
 
-    if user_text.lower() in ["🔊 voice mode", "voice mode"]:
+    if any(trigger in user_text for trigger in ["скажи голосом", "озвучь", "проговори", "say it", "speak it"]):
+        context.user_data["voice_mode"] = True
+        context.user_data["system_prompt"] = generate_system_prompt(
+            context.user_data.get("language", "English"),
+            context.user_data.get("level", "B1-B2"),
+            context.user_data.get("style", "Casual"),
+            context.user_data.get("learn_lang", "English"),
+            voice_mode=True
+        )
+        await update.message.reply_text("Переходим в голосовой режим 🎤", reply_markup=text_mode_button)
+        return
+
+    if user_text in ["🔊 voice mode", "voice mode"]:
         context.user_data["voice_mode"] = True
         context.user_data["system_prompt"] = generate_system_prompt(
             context.user_data.get("language", "English"),
@@ -127,7 +88,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
         await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
         return
 
-    if user_text.lower() in ["⌨️ text mode", "text mode"]:
+    if user_text in ["⌨️ text mode", "text mode"]:
         context.user_data["voice_mode"] = False
         context.user_data["system_prompt"] = generate_system_prompt(
             context.user_data.get("language", "English"),
@@ -147,11 +108,12 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
     learn_lang = context.user_data.get("learn_lang", "English")
     level = context.user_data.get("level", "B1-B2")
     correction_instruction = build_correction_instruction(native_lang, learn_lang, level)
-
     system_prompt = context.user_data["system_prompt"] + " " + correction_instruction
+
     chat_history = context.user_data.setdefault("chat_history", [])
     chat_history.append({"role": "user", "content": user_text})
     context.user_data["chat_history"] = chat_history[-40:]
+
     messages = [{"role": "system", "content": system_prompt}] + context.user_data["chat_history"]
 
     try:
@@ -162,10 +124,9 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
         )
         answer = completion.choices[0].message.content
 
-        import re
+        # Сохраняем слова из кавычек
         dictionary = context.user_data.setdefault("dictionary", set())
-        found_terms = re.findall(r'"([^"]{2,40})"', answer)
-        for term in found_terms:
+        for term in re.findall(r'"([^"]{2,40})"', answer):
             dictionary.add(term.strip())
 
         context.user_data["chat_history"].append({"role": "assistant", "content": answer})
