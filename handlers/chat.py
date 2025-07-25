@@ -67,7 +67,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
     ]
     if any(phrase in user_text for phrase in developer_phrases):
         await update.message.reply_text(
-            "🧠 Меня создала marona.\n💌 Написать ей можно здесь: @marona_ai"
+            "🧠 Меня создала marona.\n💌 Написать ей можно здесь: @marrona"
         )
         return
 
