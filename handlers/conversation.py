@@ -3,6 +3,9 @@ from telegram.ext import ConversationHandler, ContextTypes
 from .keyboards import learn_lang_markup, level_markup, style_keyboard_ru
 from .chat import generate_system_prompt
 from .messages import start_messages, level_messages, style_messages, welcome_messages
+
+VALID_LEVELS = ["A1-A2", "B1-B2"]
+VALID_STYLES = ["casual", "formal"]
 import random
 
 LEARN_LANG, LEVEL, STYLE = range(3)
