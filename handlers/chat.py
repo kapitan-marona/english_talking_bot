@@ -45,6 +45,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
                 f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
                 f"Use slang and a playful tone, but do not use emojis. Keep the conversation light-hearted and friendly. "
                 f"{language_level_note} {clarification_note}"
+                f"Always put corrected or translated words and phrases in double quotes."
             )
         else:
             return (
@@ -52,6 +53,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
                 f"Always respond in {learn_lang}. Use slang, jokes, emoji, and a casual tone. "
                 f"Your job is to make the conversation feel natural, fun, and light-hearted. "
                 f"Even if a user makes a mistake, respond with kindness and a playful tone. {language_level_note} {clarification_note}"
+                f"Always put corrected or translated words and phrases in double quotes."
             )
     elif style.lower() == "formal":
         if voice_mode:
@@ -62,6 +64,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
                 f"Keep your phrasing suitable for spoken delivery. "
                 f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
                 f"{language_level_note} {clarification_note}"
+                f"Always put corrected or translated words and phrases in double quotes."
             )
         else:
             return (
@@ -69,11 +72,13 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
                 f"Always respond in {learn_lang}. Use polite, clear, and structured responses. Maintain a professional tone: no emojis, no slang. "
                 f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
                 f"{language_level_note} {clarification_note}"
+                f"Always put corrected or translated words and phrases in double quotes."
             )
     else:
         return (
             f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. "
             f"{language_level_note} {clarification_note}"
+            f"Always put corrected or translated words and phrases in double quotes."
         )
 
 def build_correction_instruction(native_lang, learn_lang, level):
