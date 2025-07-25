@@ -6,6 +6,9 @@ from .messages import start_messages, level_messages, style_messages, welcome_me
 
 VALID_LEVELS = ["A1-A2", "B1-B2"]
 VALID_STYLES = ["casual", "formal"]
+
+def normalize(text):
+    return text.strip().lower()
 import random
 
 LEARN_LANG, LEVEL, STYLE = range(3)
