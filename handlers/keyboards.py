@@ -24,10 +24,5 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMa
 # уже существующие...
 # voice_mode_button, text_mode_button, learn_lang_markup и т.д.
 
-main_menu_keyboard = InlineKeyboardMarkup([
-    [InlineKeyboardButton("🌍 Сменить язык", callback_data="change_language")],
-    [InlineKeyboardButton("🎚 Изменить уровень/стиль", callback_data="change_level_style")],
-    [InlineKeyboardButton("🔁 Переключить режим", callback_data="toggle_mode")],
-    [InlineKeyboardButton("♻️ Начать сначала", callback_data="reset")]
-])
+main_menu_keyboard = InlineKeyboardMarkup([[]])  # Пустое меню
 
