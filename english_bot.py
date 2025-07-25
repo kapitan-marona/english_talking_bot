@@ -8,7 +8,7 @@ from handlers import (
     start, learn_lang_choice, level_choice, style_choice,
     chat, cancel, handle_voice_message
 )
-from config import TELEGRAM_TOKEN
+from config import TELEGRAM_TOKEN, WEBHOOK_SECRET_PATH
 
 app = FastAPI()
 
@@ -28,7 +28,7 @@ application.add_handler(conv_handler)
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 application.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
 
-@app.post("/webhook")
+@app.post(f"/webhook/{WEBHOOK_SECRET_PATH}")
 async def webhook_handler(request: Request):
     data = await request.json()
     update = Update.de_json(data, application.bot)
