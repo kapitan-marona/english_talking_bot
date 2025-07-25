@@ -9,6 +9,7 @@ from handlers import (
     start, learn_lang_choice, level_choice, style_choice,
     chat, cancel, handle_voice_message
 )
+from handlers.menu import show_menu, handle_menu_selection
 from config import TELEGRAM_TOKEN, WEBHOOK_SECRET_PATH
 import time
 
@@ -31,6 +32,8 @@ conv_handler = ConversationHandler(
 )
 
 application.add_handler(conv_handler)
+application.add_handler(CommandHandler("menu", show_menu))
+application.add_handler(CallbackQueryHandler(handle_menu_selection))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 application.add_handler(MessageHandler(filters.VOICE, handle_voice_message))
 
