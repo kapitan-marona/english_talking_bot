@@ -23,7 +23,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
         "casual": {
             True: f"You are in voice mode. You are a fun and engaging conversation partner helping people learn {learn_lang}. "
                   f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
-                  f"Use slang and a playful tone, but no emojis. {level_note} {clarification_note}"
+                  f"Use slang and a playful tone. Do NOT use emojis — this is important. Even if the user uses them, you must avoid emojis completely. {level_note} {clarification_note}
         },
         "formal": {
             True: f"You are in voice mode. You are a professional language tutor helping people practice {learn_lang}. "
