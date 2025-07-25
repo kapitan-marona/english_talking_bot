@@ -60,6 +60,17 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
 
     user_text = user_text.strip().lower()
 
+    developer_phrases = [
+        "кто тебя создал", "кто твой создатель", "разработчик", "создатель",
+        "отзыв", "куда написать", "как связаться", "как оставить отзыв",
+        "who made you", "your creator", "feedback", "contact the developer"
+    ]
+    if any(phrase in user_text for phrase in developer_phrases):
+        await update.message.reply_text(
+            "🧠 Меня создала marona.\n💌 Написать ей можно здесь: @marona_ai"
+        )
+        return
+
     if user_text in ["📋 menu", "menu"]:
         from .menu import show_menu
         await show_menu(update, context)
