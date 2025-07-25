@@ -1,33 +1,9 @@
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, KeyboardButton
-from telegram.ext import ConversationHandler, ContextTypes, MessageHandler, filters
+from telegram import Update
+from telegram.ext import ContextTypes
 from config import client
-import os
-import base64
-from google.cloud import texttospeech
-import aiofiles
-import tempfile
-import os
-import subprocess
-
-LEARN_LANG, LEVEL, STYLE = range(3)
-
-voice_mode_button = ReplyKeyboardMarkup(
-    [[KeyboardButton("🔊 Voice mode")]], resize_keyboard=True
-)
-text_mode_button = ReplyKeyboardMarkup(
-    [[KeyboardButton("⌨️ Text mode")]], resize_keyboard=True
-)
-
-learn_lang_keyboard = [
-    ["English", "French", "Spanish", "German", "Italian"],
-    ["Finnish", "Norwegian", "Swedish", "Russian", "Portuguese"]
-]
-learn_lang_markup = ReplyKeyboardMarkup(learn_lang_keyboard, one_time_keyboard=True, resize_keyboard=True)
-
-level_keyboard = [["A1-A2", "B1-B2"]]
-level_markup = ReplyKeyboardMarkup(level_keyboard, one_time_keyboard=True, resize_keyboard=True)
-
-style_keyboard_ru = [["Casual", "Formal"]]
+from .voice import speak_and_reply
+from .keyboards import voice_mode_button, text_mode_button
+import asyncio
 
 LANG_CODES = {
     "English": "en", "French": "fr", "Spanish": "es", "German": "de", "Italian": "it",
@@ -54,18 +30,14 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
     else:
         language_level_note = ""
 
-    # Explain words in the appropriate language
     if voice_mode:
-        # In voice mode, explanations should be in the target language
         clarification_note = f"When appropriate, briefly explain difficult words or expressions in {learn_lang} using simple terms."
     else:
-        # In text mode, use native language for explanations
         if native_lang == "Russian":
             clarification_note = "When appropriate, briefly explain difficult words or expressions in Russian using simple terms."
         else:
             clarification_note = "When appropriate, briefly explain difficult words or expressions in English using simple terms."
 
-    # Style handling with explicit mode instructions
     if style.lower() == "casual":
         if voice_mode:
             return (
@@ -81,7 +53,6 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
                 f"Your job is to make the conversation feel natural, fun, and light-hearted. "
                 f"Even if a user makes a mistake, respond with kindness and a playful tone. {language_level_note} {clarification_note}"
             )
-
     elif style.lower() == "formal":
         if voice_mode:
             return (
@@ -99,14 +70,11 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
                 f"However, keep the conversation lively, intelligent, and friendly. Subtly use humor and positivity to encourage the learner. "
                 f"{language_level_note} {clarification_note}"
             )
-            
-
     else:
         return (
             f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. "
             f"{language_level_note} {clarification_note}"
         )
-
 
 def build_correction_instruction(native_lang, learn_lang, level):
     if level == "A1-A2":
@@ -126,45 +94,6 @@ def build_correction_instruction(native_lang, learn_lang, level):
             f"Include clear examples and rephrase their sentence if needed to show the correct usage."
         )
     return ""
-
-async def speak_and_reply(text: str, update: Update, context: ContextTypes.DEFAULT_TYPE):
-    learn_lang = context.user_data.get("learn_lang", "English")
-    lang_code = LANG_CODES.get(learn_lang, "en")
-
-    key_b64 = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_BASE64")
-    if key_b64:
-        import json
-        key_json = base64.b64decode(key_b64).decode("utf-8")
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".json") as key_file:
-            key_file.write(key_json.encode("utf-8"))
-            os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_file.name
-
-    client_tts = texttospeech.TextToSpeechClient()
-    synthesis_input = texttospeech.SynthesisInput(text=text)
-
-    voice_params = texttospeech.VoiceSelectionParams(
-        language_code=lang_code,
-        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL,
-    )
-
-    audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3,
-    )
-
-    response = client_tts.synthesize_speech(
-        input=synthesis_input,
-        voice=voice_params,
-        audio_config=audio_config,
-    )
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as out:
-        out.write(response.audio_content)
-        temp_file_name = out.name
-
-    with open(temp_file_name, "rb") as audio_file:
-        await update.message.reply_voice(audio_file, caption=text)
-
-    os.remove(temp_file_name)
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
     user_text = user_text_override or (update.message.text if update.message else None)
@@ -208,7 +137,6 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
 
     system_prompt = context.user_data["system_prompt"] + " " + correction_instruction
     chat_history = context.user_data.setdefault("chat_history", [])
-
     chat_history.append({"role": "user", "content": user_text})
     context.user_data["chat_history"] = chat_history[-40:]
     messages = [{"role": "system", "content": system_prompt}] + context.user_data["chat_history"]
@@ -230,102 +158,3 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
 
     except Exception as e:
         await update.message.reply_text(f"Ошибка: {e}")
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data.clear()
-    user_locale = update.effective_user.language_code or "en"
-    lang = "Русский" if user_locale.startswith("ru") else "English"
-    context.user_data["language"] = lang
-
-    await update.message.reply_text(
-        "Выбери изучаемый язык:" if lang == "Русский" else "Choose a language to learn:",
-        reply_markup=learn_lang_markup
-    )
-    return LEARN_LANG
-
-async def learn_lang_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["learn_lang"] = update.message.text
-    lang = context.user_data["language"]
-    await update.message.reply_text(
-        "Выбери уровень языка:" if lang == "Русский" else "Choose your level:",
-        reply_markup=level_markup
-    )
-    return LEVEL
-
-async def level_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["level"] = update.message.text
-    lang = context.user_data["language"]
-    await update.message.reply_text(
-        "Выбери стиль общения:" if lang == "Русский" else "Choose your conversation style:",
-        reply_markup=ReplyKeyboardMarkup(style_keyboard_ru, one_time_keyboard=True, resize_keyboard=True)
-    )
-    return STYLE
-
-async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["style"] = update.message.text
-    context.user_data["voice_mode"] = False
-    context.user_data["mode_button_shown"] = False
-
-    lang = context.user_data["language"]
-    msg = (
-        "Отлично, давай просто поболтаем! 😎 С чего хочешь начать?"
-        if lang == "Русский" else
-        "Great! Let's chat. What would you like to start with?"
-    )
-    await update.message.reply_text(msg, reply_markup=ReplyKeyboardRemove())
-
-    prompt = generate_system_prompt(
-        interface_lang=context.user_data["language"],
-        level=context.user_data["level"],
-        style=context.user_data["style"],
-        learn_lang=context.user_data["learn_lang"],
-        voice_mode=False
-    )
-    context.user_data["system_prompt"] = prompt
-    return ConversationHandler.END
-
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data.clear()
-    await update.message.reply_text("Диалог отменён.", reply_markup=ReplyKeyboardRemove())
-    return ConversationHandler.END
-
-async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    learn_lang = context.user_data.get("learn_lang", "English")
-    lang_code = LANG_CODES.get(learn_lang, "en")
-
-    if lang_code not in WHISPER_SUPPORTED_LANGS:
-        await update.message.reply_text(UNSUPPORTED_LANGUAGE_MESSAGE.get(
-            context.user_data.get("language", "English"),
-            "Voice recognition is not supported for this language. Please use text input."
-        ))
-        return
-
-    voice = update.message.voice
-    if not voice:
-        await update.message.reply_text("Не удалось получить голосовое сообщение.")
-        return
-
-    file = await context.bot.get_file(voice.file_id)
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".ogg") as temp_ogg:
-        await file.download_to_drive(temp_ogg.name)
-        ogg_path = temp_ogg.name
-
-    wav_path = ogg_path.replace(".ogg", ".wav")
-    subprocess.run(["ffmpeg", "-i", ogg_path, "-ar", "16000", "-ac", "1", wav_path])
-
-    try:
-        with open(wav_path, "rb") as audio_file:
-            transcript = client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                response_format="text",
-                language=lang_code
-            )
-    except Exception as e:
-        await update.message.reply_text(f"Ошибка при распознавании речи: {e}")
-        return
-    finally:
-        os.remove(ogg_path)
-        os.remove(wav_path)
-
-    await chat(update, context, user_text_override=transcript.strip())
