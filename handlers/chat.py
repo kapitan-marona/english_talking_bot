@@ -102,16 +102,18 @@ def build_correction_instruction(native_lang, learn_lang, level):
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
     user_text = user_text_override or (update.message.text if update.message else None)
-if not user_text:
-    await update.message.reply_text("Не удалось обработать сообщение.")
-    return
-user_text = user_text.strip()
+    
+    if not user_text:
+        await update.message.reply_text("Не удалось обработать сообщение.")
+        return
 
-# 📋 Обработка меню
-if user_text.lower() in ["📋 menu", "menu"]:
-    from .menu import show_menu
-    await show_menu(update, context)
-    return
+    user_text = user_text.strip()
+
+    # 📋 Обработка меню — этот блок должен быть внутри функции
+    if user_text.lower() in ["📋 menu", "menu"]:
+        from .menu import show_menu
+        await show_menu(update, context)
+        return
 
     if user_text.lower() in ["🔊 voice mode", "voice mode"]:
         context.user_data["voice_mode"] = True
@@ -159,6 +161,13 @@ if user_text.lower() in ["📋 menu", "menu"]:
             temperature=0.7
         )
         answer = completion.choices[0].message.content
+
+        import re
+        dictionary = context.user_data.setdefault("dictionary", set())
+        found_terms = re.findall(r'"([^"]{2,40})"', answer)
+        for term in found_terms:
+            dictionary.add(term.strip())
+
         context.user_data["chat_history"].append({"role": "assistant", "content": answer})
         context.user_data["chat_history"] = context.user_data["chat_history"][-40:]
 
