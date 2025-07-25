@@ -6,7 +6,6 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from config import client
 from google.cloud import texttospeech
-from .chat import chat
 from .constants import LANG_CODES, WHISPER_SUPPORTED_LANGS, UNSUPPORTED_LANGUAGE_MESSAGE
 
 async def speak_and_reply(text: str, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -87,4 +86,6 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
         os.remove(ogg_path)
         os.remove(wav_path)
 
+    # 💡 Импортируем chat внутри функции — избегаем циклического импорта
+    from .chat import chat
     await chat(update, context, user_text_override=transcript.strip())
