@@ -1,11 +1,11 @@
 from telegram import ReplyKeyboardMarkup, KeyboardButton
 
 voice_mode_button = ReplyKeyboardMarkup(
-    [[KeyboardButton("🔊 Voice mode")]], resize_keyboard=True
+    [[KeyboardButton("🔊 Voice mode")], [KeyboardButton("📋 Menu")]], resize_keyboard=True
 )
 
 text_mode_button = ReplyKeyboardMarkup(
-    [[KeyboardButton("⌨️ Text mode")]], resize_keyboard=True
+    [[KeyboardButton("⌨️ Text mode")], [KeyboardButton("📋 Menu")]], resize_keyboard=True
 )
 
 learn_lang_keyboard = [
