@@ -3,7 +3,7 @@ from fastapi import FastAPI, Request
 from telegram import Update
 from telegram.ext import (
     Application, CommandHandler, MessageHandler,
-    ConversationHandler, ContextTypes, filters
+    ConversationHandler, CallbackQueryHandler, ContextTypes, filters
 )
 from handlers import (
     start, learn_lang_choice, level_choice, style_choice,
