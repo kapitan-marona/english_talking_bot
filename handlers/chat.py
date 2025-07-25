@@ -97,10 +97,16 @@ def build_correction_instruction(native_lang, learn_lang, level):
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
     user_text = user_text_override or (update.message.text if update.message else None)
-    if not user_text:
-        await update.message.reply_text("Не удалось обработать сообщение.")
-        return
-    user_text = user_text.strip()
+if not user_text:
+    await update.message.reply_text("Не удалось обработать сообщение.")
+    return
+user_text = user_text.strip()
+
+# 📋 Обработка меню
+if user_text.lower() in ["📋 menu", "menu"]:
+    from .menu import show_menu
+    await show_menu(update, context)
+    return
 
     if user_text.lower() in ["🔊 voice mode", "voice mode"]:
         context.user_data["voice_mode"] = True
