@@ -80,7 +80,7 @@ async def handle_voice_message(update: Update, context: ContextTypes.DEFAULT_TYP
                 language=lang_code
             )
     except Exception as e:
-        await update.message.reply_text(f"Ошибка при распознавании речи: {e}")
+        await update.message.reply_text("Произошла ошибка при распознавании речи. Попробуйте позже.")
         return
     finally:
         os.remove(ogg_path)
