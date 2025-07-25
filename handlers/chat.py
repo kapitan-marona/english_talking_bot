@@ -150,4 +150,4 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
             await update.message.reply_text(answer, reply_markup=voice_mode_button)
 
     except Exception as e:
-        await update.message.reply_text(f"Ошибка: {e}")
+        await update.message.reply_text("Произошла ошибка. Попробуйте позже.")
