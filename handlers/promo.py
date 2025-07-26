@@ -1,3 +1,4 @@
+
 from telegram import Update
 from telegram.ext import ContextTypes
 from handlers.conversation import promo_completed
@@ -9,9 +10,9 @@ PROMO_EXPIRATION = datetime(2025, 8, 26)
 def is_expired():
     return datetime.now() > PROMO_EXPIRATION
 
-
 VALID_PROMOCODES = {
-    "БРАТСКИЙ_ЧЕК": "🎁 Дружеский бонус активирован!"
+    "друг": "Промокод принят! 🎁 Дружеский бонус активирован до 26.08!",
+    "ТЕСТОВЫЙ": "🧪 Тестовый режим включён"
 }
 USED_PROMOCODES = set()
 
@@ -21,26 +22,24 @@ async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if not context.args:
-        await update.message.reply_text("Введите промокод после команды, например: /promo БРАТСКИЙ_ЧЕК")
+        await update.message.reply_text(
+            "Если у тебя есть промокод, введи его после команды /promo.
+Например: /promo code"
+        )
         return
 
     code = update.message.text.replace("/promo", "").strip().upper()
     user_id = update.effective_user.id
     promo_key = f"{user_id}:{code}"
 
-    if code not in VALID_PROMOCODES:
-        await update.message.reply_text("❌ Неверный промокод.")
-        return
-
-    if promo_key in USED_PROMOCODES:
+    if code != "ТЕСТОВЫЙ" and promo_key in USED_PROMOCODES:
         await update.message.reply_text("⚠️ Этот промокод уже использован.")
         return
 
     USED_PROMOCODES.add(promo_key)
-    await update.message.reply_text(f"✅ Промокод активирован: {VALID_PROMOCODES[code]}")
+    await update.message.reply_text(f"✅ {VALID_PROMOCODES.get(code, '🎉')}")
 
-    await update.message.reply_text("""
-Привет, друг! 🖖
+    await update.message.reply_text("""Привет, друг! 🖖
 Через минуту начнётся твоя захватывающая беседа с ботом-компаньоном. Очень надеюсь, вы подружитесь — он старается не зря!
 
 Вот что он умеет (и даже немного больше):
