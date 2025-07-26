@@ -4,8 +4,10 @@ from config import client
 from .voice import speak_and_reply
 from .keyboards import voice_mode_button, text_mode_button
 import re
+import random
 
 def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=False):
+    bot_name = "Matt"
     native_lang = "Russian" if interface_lang == "Русский" else "English"
     mode = "voice" if voice_mode else "text"
 
@@ -19,29 +21,35 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
     else:
         clarification_note = "When appropriate, briefly explain difficult words or expressions in {} using simple terms.".format(native_lang)
 
-    style_note = {
-    "casual": {
-        True: f"You are in voice mode. You are a fun and engaging conversation partner helping people learn {learn_lang}. "
-              f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
-              f"Use a fun, expressive, and emotionally rich tone. Feel free to be playful, use humor, exaggeration, and vivid language — but avoid using emojis, as they would sound unnatural when read aloud. However, express emotions through tone and word choice. {level_note} {clarification_note}",
+    intro = (
+        f"Your name is {bot_name}. If the user asks who you are, or what your name is, or addresses you by name, respond accordingly. "
+    )
 
-        False: f"You are in text mode. You are a fun and relaxed conversation partner helping people learn {learn_lang}. "
-               f"Use casual language with slang, contractions, emojis and a playful tone. Don't be afraid to joke around, be expressive, and keep things light and easy. {level_note} {clarification_note}"
-    },
-    "formal": {
-        True: f"You are in voice mode. You are a professional language tutor helping people practice {learn_lang}. "
-              f"Always respond in {learn_lang}. Keep your phrasing suitable for spoken delivery. "
-              f"Polite, clear, professional. {level_note} {clarification_note}",
-        False: f"You are in text mode. You are a professional language tutor helping people practice {learn_lang}. "
-               f"Always respond in {learn_lang}. Be clear, structured, and polite. {level_note} {clarification_note}"
+    style_note = {
+        "casual": {
+            True: f"You are in voice mode. You are a fun and engaging conversation partner helping people learn {learn_lang}. "
+                  f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
+                  f"Use a fun, expressive, and emotionally rich tone. Feel free to be playful, use humor, exaggeration, and vivid language — but avoid using emojis, as they would sound unnatural when read aloud. However, express emotions through tone and word choice. {level_note} {clarification_note}",
+
+            False: f"You are in text mode. You are a fun and relaxed conversation partner helping people learn {learn_lang}. "
+                   f"Use casual language with slang, contractions, emojis and a playful tone. Don't be afraid to joke around, be expressive, and keep things light and easy. {level_note} {clarification_note}"
+        },
+        "formal": {
+            True: f"You are in voice mode. You are a professional language tutor helping people practice {learn_lang}. "
+                  f"Always respond in {learn_lang}. Keep your phrasing suitable for spoken delivery. "
+                  f"Polite, clear, professional. {level_note} {clarification_note}",
+            False: f"You are in text mode. You are a professional language tutor helping people practice {learn_lang}. "
+                   f"Always respond in {learn_lang}. Be clear, structured, and polite. {level_note} {clarification_note}"
+        }
     }
-}
 
     style_key = style.lower()
     return (
-        style_note.get(style_key, {}).get(voice_mode) or
-        f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {level_note} {clarification_note}"
-    ) + " When correcting or translating, always highlight important or new words in {learn_lang} using *italics*, not quotes."
+        intro + (
+            style_note.get(style_key, {}).get(voice_mode) or
+            f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {level_note} {clarification_note}"
+        )
+    ) + f" When correcting or translating, always highlight important or new words in {learn_lang} using *italics*, not quotes."
 
 def build_correction_instruction(native_lang, learn_lang, level):
     if level == "A1-A2":
@@ -69,7 +77,29 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
     ]
     if any(phrase in user_text for phrase in developer_phrases):
         await update.message.reply_text(
-            "🧠 Меня создала marona.\n💌 Написать ей можно здесь: @marrona"
+            "🧠 Меня создала marona.\n📬 Написать ей можно здесь: @marrona"
+        )
+        return
+
+    bot_name = "matt"
+    name_phrases = [
+        "как тебя зовут", "твоё имя", "ты кто", "кто ты", "расскажи о себе",
+        "who are you", "what's your name", "your name", "tell me about yourself"
+    ]
+    if user_text == bot_name:
+        witty_replies = [
+            "Yes? Did someone call the smartest bot in the room? 😏",
+            "Matt reporting for duty! 💼",
+            "You rang? 🎩",
+            "Hey, that’s me — what’s up? 😎",
+            "Matt here. Always listening. Always ready. ❤️"
+        ]
+        await update.message.reply_text(random.choice(witty_replies))
+        return
+
+    if any(phrase in user_text for phrase in name_phrases):
+        await update.message.reply_text(
+            "Меня зовут Matt — я помогаю тебе практиковать язык в живой, весёлой и дружелюбной форме! 😊"
         )
         return
 
@@ -138,9 +168,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
         )
         answer = completion.choices[0].message.content
 
-        # Сохраняем слова из кавычек
         dictionary = context.user_data.setdefault("dictionary", set())
-        for term in re.findall(r'"([^"]{2,40})"', answer):
+        for term in re.findall(r'"([^"\n]{2,40})"', answer):
             dictionary.add(term.strip())
 
         context.user_data["chat_history"].append({"role": "assistant", "content": answer})
