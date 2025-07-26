@@ -39,6 +39,8 @@ async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     USED_PROMOCODES.add(promo_key)
     await update.message.reply_text(f"✅ {VALID_PROMOCODES.get(code, '🎉')}")
 
+    user_lang = update.effective_user.language_code or "en"
+if user_lang.startswith("ru"):
     await update.message.reply_text("""Привет, друг! 🖖
 Через минуту начнётся твоя захватывающая беседа с ботом-компаньоном. Очень надеюсь, вы подружитесь — он старается не зря!
 
@@ -57,5 +59,25 @@ async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 Он не любит торопиться, поэтому принимает 1 сообщение или команду за 3 секунды.
 Оможет ошибаться. Но с каждым разом всё меньше. 
 """)
+else:
+    await update.message.reply_text("""Hey there, friend! 🖖
+You're just moments away from chatting with your new companion bot. I hope you two get along — he's really trying his best!
 
-    return await promo_completed(update, context)
+Here's what he can do (and even more):
+
+• 💬 Chat with you on any topic — from “hi” to “what's the meaning of life?”
+• ✍️ Gently correct and explain mistakes — no judgment if you mistype
+• 📚 Automatically keeps a personal dictionary of new words for you (yes, by himself!)
+• 🌍 Act as your personal translator — words, phrases, or whole paragraphs
+• 🇬🇧 Help you improve your English — especially if it’s not your first language
+• 🧠 Invent learning tasks like a loving personal coach
+• 🎙 Speak in almost every language (except Finnish and Norwegian — they’re on vacation)
+• 🎭 Be playful and fun in casual mode, or serious and formal if you prefer
+• 🧪 Do way more than you expect. Don’t be afraid to test him — you won’t break anything.
+
+He’s slow and steady — one message or command every 3 seconds.
+And yes, he might make mistakes. But he gets better every time.
+""")
+
+return await promo_completed(update, context)
+
