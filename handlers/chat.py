@@ -86,6 +86,28 @@ def is_russian(word):
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
     user_text = user_text_override or (update.message.text if update.message else None)
+
+    if user_text in ["🌐 change language", "change language"]:
+        context.user_data.clear()
+        from .start import start
+        return await start(update, context)
+
+    # Normalize possible emoji-enhanced styles
+    style_raw = context.user_data.get("style", "").strip().lower()
+    if "casual" in style_raw:
+        context.user_data["style"] = "casual"
+    elif "business" in style_raw or "formal" in style_raw:
+        context.user_data["style"] = "formal"
+
+    # Normalize level name if user selected "Beginner"/"Intermediate"
+    level = context.user_data.get("level", "B1-B2")
+    if level.lower() == "beginner":
+        level = "A1-A2"
+        context.user_data["level"] = level
+    elif level.lower() == "intermediate":
+        level = "B1-B2"
+        context.user_data["level"] = level
+
     if not user_text:
         await update.message.reply_text("Не удалось обработать сообщение.")
         return
