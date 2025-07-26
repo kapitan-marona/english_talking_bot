@@ -1,4 +1,3 @@
-
 from telegram import Update
 from telegram.ext import ContextTypes
 from handlers.conversation import promo_completed
@@ -13,7 +12,7 @@ def is_expired():
 VALID_PROMOCODES = {
     "друг": "Промокод принят! 🎁 Дружеский бонус активирован до 26.08!",
     "ТЕСТОВЫЙ": "🧪 Тестовый режим включён",
-    "0917": "🔓 Вход выполнен 👑"
+    "0917": "🔓 Персональный доступ активирован! Добро пожаловать 👑"
 }
 USED_PROMOCODES = set()
 
