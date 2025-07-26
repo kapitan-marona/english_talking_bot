@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from config import client
 from .voice import speak_and_reply
-from .keyboards import voice_mode_button, text_mode_button
+from .keyboards import voice_mode_button, text_mode_button, learn_lang_markup
 import re
 import random
 
@@ -89,8 +89,8 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
 
     if user_text in ["🌐 change language", "change language"]:
         context.user_data.clear()
-        from .start import start
-        return await start(update, context, force_language_reset=True)
+        await update.message.reply_text("Let's choose a new language:", reply_markup=learn_lang_markup)
+        return
 
     # Normalize possible emoji-enhanced styles
     style_raw = context.user_data.get("style", "").strip().lower()
