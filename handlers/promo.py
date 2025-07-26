@@ -20,8 +20,8 @@ USED_PROMOCODES = set()
 async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
         await update.message.reply_text(
-            "Если у тебя есть промокод, введи его после команды /promo.
-Например: /promo code"
+            "Если у тебя есть промокод, введи его после команды /promo.\n"
+            "Например: /promo code"
         )
         return
 
