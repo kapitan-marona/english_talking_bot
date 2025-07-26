@@ -8,9 +8,25 @@ from config import client
 from google.cloud import texttospeech
 from .constants import LANG_CODES, WHISPER_SUPPORTED_LANGS, UNSUPPORTED_LANGUAGE_MESSAGE
 
+# ✨ Настройка предпочтительных голосов
+PREFERRED_VOICES = {
+    "ru": "ru-RU-Wavenet-B",
+    "en": "en-US-Wavenet-D",
+    "de": "de-DE-Standard-A",
+    "fr": "fr-FR-Wavenet-B",
+    "es": "es-ES-Wavenet-A",
+    "pt": "pt-BR-Wavenet-A",
+    "it": "it-IT-Wavenet-B",
+    "no": "nb-NO-Standard-A",
+    "sv": "sv-SE-Standard-A",
+    "fi": "fi-FI-Standard-A",
+}
+
 async def speak_and_reply(text: str, update: Update, context: ContextTypes.DEFAULT_TYPE):
     learn_lang = context.user_data.get("learn_lang", "English")
     lang_code = LANG_CODES.get(learn_lang, "en")
+    lang_root = lang_code.split("-")[0]
+    voice_name = PREFERRED_VOICES.get(lang_root)
 
     key_b64 = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_BASE64")
     if key_b64:
@@ -25,6 +41,7 @@ async def speak_and_reply(text: str, update: Update, context: ContextTypes.DEFAU
 
     voice_params = texttospeech.VoiceSelectionParams(
         language_code=lang_code,
+        name=voice_name or "",
         ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL,
     )
 
