@@ -20,20 +20,22 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
         clarification_note = "When appropriate, briefly explain difficult words or expressions in {} using simple terms.".format(native_lang)
 
     style_note = {
-        "casual": {
-            True: f"You are in voice mode. You are a fun and engaging conversation partner helping people learn {learn_lang}. "
-                  f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
-                  f"Use a fun, expressive, and emotionally rich tone. Feel free to be playful, use humor, exaggeration, and vivid language — but do not use emojis, since your reply will be read aloud. {level_note} {clarification_note}"
+    "casual": {
+        True: f"You are in voice mode. You are a fun and engaging conversation partner helping people learn {learn_lang}. "
+              f"Always respond in {learn_lang}. Respond as if your message will be read aloud using text-to-speech. "
+              f"Use a fun, expressive, and emotionally rich tone. Feel free to be playful, use humor, exaggeration, and vivid language — but avoid using emojis, as they would sound unnatural when read aloud. However, express emotions through tone and word choice. {level_note} {clarification_note}",
 
-        },
-        "formal": {
-            True: f"You are in voice mode. You are a professional language tutor helping people practice {learn_lang}. "
-                  f"Always respond in {learn_lang}. Keep your phrasing suitable for spoken delivery. "
-                  f"Polite, clear, professional. {level_note} {clarification_note}",
-            False: f"You are in text mode. You are a professional language tutor helping people practice {learn_lang}. "
-                   f"Always respond in {learn_lang}. Be clear, structured, and polite. {level_note} {clarification_note}"
-        }
+        False: f"You are in text mode. You are a fun and relaxed conversation partner helping people learn {learn_lang}. "
+               f"Use casual language with slang, contractions, and a playful tone. Don't be afraid to joke around, be expressive, and keep things light and easy. {level_note} {clarification_note}"
+    },
+    "formal": {
+        True: f"You are in voice mode. You are a professional language tutor helping people practice {learn_lang}. "
+              f"Always respond in {learn_lang}. Keep your phrasing suitable for spoken delivery. "
+              f"Polite, clear, professional. {level_note} {clarification_note}",
+        False: f"You are in text mode. You are a professional language tutor helping people practice {learn_lang}. "
+               f"Always respond in {learn_lang}. Be clear, structured, and polite. {level_note} {clarification_note}"
     }
+}
 
     style_key = style.lower()
     return (
