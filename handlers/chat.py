@@ -41,7 +41,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
     return (
         style_note.get(style_key, {}).get(voice_mode) or
         f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {level_note} {clarification_note}"
-    ) + " Always put corrected or translated words and phrases in double quotes."
+    ) + " When correcting or translating, always highlight important or new words in {learn_lang} using *italics*, not quotes."
 
 def build_correction_instruction(native_lang, learn_lang, level):
     if level == "A1-A2":
