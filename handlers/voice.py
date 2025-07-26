@@ -42,7 +42,7 @@ async def speak_and_reply(text: str, update: Update, context: ContextTypes.DEFAU
     voice_params = texttospeech.VoiceSelectionParams(
         language_code=lang_code,
         name=voice_name or "",
-        ssml_gender=texttospeech.SsmlVoiceGender.NEUTRAL,
+        ssml_gender=texttospeech.SsmlVoiceGender.MALE,
     )
 
     audio_config = texttospeech.AudioConfig(
