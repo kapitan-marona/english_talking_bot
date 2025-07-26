@@ -52,7 +52,11 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     await update.message.reply_text(
         "🎟 Перед началом — введи промокод для активации доступа:\n\n"
         "Если он у тебя есть — напиши команду /promo с кодом.\n"
-        "Например: /promo code"
+        "Например: /promo code\n\n"
+        "————————————\n"
+        "🎟 Before we begin — please enter your promo code to activate access:\n\n"
+        "If you already have one, use the command /promo with your code.\n"
+        "For example: /promo code"
     )
 
 
