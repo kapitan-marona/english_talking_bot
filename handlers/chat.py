@@ -200,7 +200,14 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
         context.user_data["chat_history"] = context.user_data["chat_history"][-40:]
 
         if context.user_data.get("voice_mode"):
-            await speak_and_reply(answer, update, context)
+            lowercase_answer = answer.lower()
+            if any(phrase in lowercase_answer for phrase in [
+                "i can't actually say", "text-based ai", "i can only write", "as a text model", "i cannot speak"
+            ]):
+                await update.message.reply_text(answer, reply_markup=voice_mode_button)
+                return
+            else:
+                await speak_and_reply(answer, update, context)
         else:
             await update.message.reply_text(answer, reply_markup=voice_mode_button)
 
