@@ -5,6 +5,7 @@ from telegram.ext import (
     Application, CommandHandler, MessageHandler,
     ConversationHandler, CallbackQueryHandler, ContextTypes, filters
 )
+from handlers.promo import promo
 from handlers import (
     start, learn_lang_choice, level_choice, style_choice,
     chat, cancel, handle_voice_message
@@ -32,6 +33,7 @@ conv_handler = ConversationHandler(
 )
 
 application.add_handler(conv_handler)
+application.add_handler(CommandHandler("promo", promo))
 application.add_handler(CommandHandler("menu", show_menu))
 application.add_handler(CallbackQueryHandler(handle_menu_selection))
 application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
