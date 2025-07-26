@@ -6,6 +6,7 @@ from .keyboards import voice_mode_button, text_mode_button
 import re
 import random
 
+
 def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=False):
     bot_name = "Matt"
     native_lang = "Russian" if interface_lang == "Русский" else "English"
@@ -49,7 +50,8 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
             style_note.get(style_key, {}).get(voice_mode) or
             f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {level_note} {clarification_note}"
         )
-    ) + f" When correcting or translating, always highlight important or new words in {learn_lang} using *italics*, not quotes."
+    ) + f" When correcting or translating, always highlight important or new words in {learn_lang} using vertical bars, like this: |word|."
+
 
 def build_correction_instruction(native_lang, learn_lang, level):
     if level == "A1-A2":
@@ -61,6 +63,15 @@ def build_correction_instruction(native_lang, learn_lang, level):
     elif level == "B1-B2":
         return f"If the user makes a mistake, gently correct them and explain in {learn_lang} with examples."
     return ""
+
+# === Новый код ===
+def extract_marked_words(text):
+    return re.findall(r'\|([^|]{2,40})\|', text)
+
+def is_russian(word):
+    return bool(re.match(r'^[А-Яа-яЁё\s\-]+$', word.strip()))
+# =================
+
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
     user_text = user_text_override or (update.message.text if update.message else None)
@@ -77,7 +88,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
     ]
     if any(phrase in user_text for phrase in developer_phrases):
         await update.message.reply_text(
-            "🧠 Меня создала marona.\n📬 Написать ей можно здесь: @marrona"
+            "\U0001F9E0 Меня создала marona.\n\U0001F4EC Написать ей можно здесь: @marrona"
         )
         return
 
@@ -88,22 +99,22 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
     ]
     if user_text == bot_name:
         witty_replies = [
-            "Yes? Did someone call the smartest bot in the room? 😏",
-            "Matt reporting for duty! 💼",
-            "You rang? 🎩",
-            "Hey, that’s me — what’s up? 😎",
-            "Matt here. Always listening. Always ready. ❤️"
+            "Yes? Did someone call the smartest bot in the room? \U0001F60F",
+            "Matt reporting for duty! \U0001F4BC",
+            "You rang? \U0001F3A9",
+            "Hey, that’s me — what’s up? \U0001F60E",
+            "Matt here. Always listening. Always ready. \u2764\ufe0f"
         ]
         await update.message.reply_text(random.choice(witty_replies))
         return
 
     if any(phrase in user_text for phrase in name_phrases):
         await update.message.reply_text(
-            "Меня зовут Matt — я помогаю тебе практиковать язык в живой, весёлой и дружелюбной форме! 😊"
+            "Меня зовут Matt — я помогаю тебе практиковать язык в живой, весёлой и дружелюбной форме! \U0001F60A"
         )
         return
 
-    if user_text in ["📋 menu", "menu"]:
+    if user_text in ["\U0001F4CB menu", "menu"]:
         from .menu import show_menu
         await show_menu(update, context)
         return
@@ -117,10 +128,10 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
             context.user_data.get("learn_lang", "English"),
             voice_mode=True
         )
-        await update.message.reply_text("Переходим в голосовой режим 🎤", reply_markup=text_mode_button)
+        await update.message.reply_text("Переходим в голосовой режим \U0001F3A4", reply_markup=text_mode_button)
         return
 
-    if user_text in ["🔊 voice mode", "voice mode"]:
+    if user_text in ["\U0001F50A voice mode", "voice mode"]:
         context.user_data["voice_mode"] = True
         context.user_data["system_prompt"] = generate_system_prompt(
             context.user_data.get("language", "English"),
@@ -132,7 +143,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
         await update.message.reply_text("Voice mode enabled.", reply_markup=text_mode_button)
         return
 
-    if user_text in ["⌨️ text mode", "text mode"]:
+    if user_text in ["\u2328\ufe0f text mode", "text mode"]:
         context.user_data["voice_mode"] = False
         context.user_data["system_prompt"] = generate_system_prompt(
             context.user_data.get("language", "English"),
@@ -168,9 +179,13 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
         )
         answer = completion.choices[0].message.content
 
+        # === Новый блок логики добавления в словарь ===
         dictionary = context.user_data.setdefault("dictionary", set())
-        for term in re.findall(r'"([^"\n]{2,40})"', answer):
-            dictionary.add(term.strip())
+        for word in extract_marked_words(answer):
+            cleaned_word = word.strip()
+            if not is_russian(cleaned_word):
+                dictionary.add(cleaned_word)
+        # =================================================
 
         context.user_data["chat_history"].append({"role": "assistant", "content": answer})
         context.user_data["chat_history"] = context.user_data["chat_history"][-40:]
