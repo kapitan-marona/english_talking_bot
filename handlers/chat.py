@@ -90,7 +90,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
     if user_text in ["🌐 change language", "change language"]:
         context.user_data.clear()
         from .start import start
-        return await start(update, context)
+        return await start(update, context, force_language_reset=True)
 
     # Normalize possible emoji-enhanced styles
     style_raw = context.user_data.get("style", "").strip().lower()
