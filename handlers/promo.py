@@ -12,15 +12,12 @@ def is_expired():
 
 VALID_PROMOCODES = {
     "друг": "Промокод принят! 🎁 Дружеский бонус активирован до 26.08!",
-    "ТЕСТОВЫЙ": "🧪 Тестовый режим включён"
+    "ТЕСТОВЫЙ": "🧪 Тестовый режим включён",
+    "0917": "🔓 Вход выполнен 👑"
 }
 USED_PROMOCODES = set()
 
 async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if is_expired():
-        await update.message.reply_text("⏰ Срок действия промокода истёк. Но не переживай — скоро будут новые!")
-        return
-
     if not context.args:
         await update.message.reply_text(
             "Если у тебя есть промокод, введи его после команды /promo.
@@ -32,7 +29,11 @@ async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     promo_key = f"{user_id}:{code}"
 
-    if code != "ТЕСТОВЫЙ" and promo_key in USED_PROMOCODES:
+    if code not in ["0917", "ТЕСТОВЫЙ"] and is_expired():
+        await update.message.reply_text("⏰ Срок действия промокода истёк. Но не переживай — скоро будут новые!")
+        return
+
+    if code not in ["0917", "ТЕСТОВЫЙ"] and promo_key in USED_PROMOCODES:
         await update.message.reply_text("⚠️ Этот промокод уже использован.")
         return
 
