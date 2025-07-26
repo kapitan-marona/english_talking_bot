@@ -26,7 +26,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
               f"Use a fun, expressive, and emotionally rich tone. Feel free to be playful, use humor, exaggeration, and vivid language — but avoid using emojis, as they would sound unnatural when read aloud. However, express emotions through tone and word choice. {level_note} {clarification_note}",
 
         False: f"You are in text mode. You are a fun and relaxed conversation partner helping people learn {learn_lang}. "
-               f"Use casual language with slang, contractions, and a playful tone. Don't be afraid to joke around, be expressive, and keep things light and easy. {level_note} {clarification_note}"
+               f"Use casual language with slang, contractions, emojis and a playful tone. Don't be afraid to joke around, be expressive, and keep things light and easy. {level_note} {clarification_note}"
     },
     "formal": {
         True: f"You are in voice mode. You are a professional language tutor helping people practice {learn_lang}. "
