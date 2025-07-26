@@ -50,7 +50,7 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
             style_note.get(style_key, {}).get(voice_mode) or
             f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {level_note} {clarification_note}"
         )
-    ) + f" When correcting mistakes, translating, or explaining difficult words, always wrap the important or corrected words in vertical bars like this: |word|. " \
+    ) + f" When correcting mistakes, translating, or explaining difficult words, always wrap the important or corrected words in tildes like this: ~word~. " \
         f"Do not use quotes, italics, or asterisks for this purpose — only vertical bars. " \
         f"This is important for building the user's personal dictionary."
 
@@ -66,7 +66,7 @@ def build_correction_instruction(native_lang, learn_lang, level):
         return (
             "Если пользователь делает ошибку, вежливо укажи на неё и объясни на русском языке, как правильно. "
             "Приводи короткие примеры и переформулировки. "
-            "Выделяй исправленные или важные слова с помощью вертикальных черт, например: |слово|. "
+            "Выделяй исправленные или важные слова с помощью тильд, например: ~слово~. "
             "Не используй кавычки, курсив или звёздочки." if native_lang == "Русский" else
             f"If the user makes a mistake, gently point it out and explain in English. Give short examples and reformulations. {marker_note}"
         )
@@ -78,7 +78,7 @@ def build_correction_instruction(native_lang, learn_lang, level):
 
 
 def extract_marked_words(text):
-    return re.findall(r'\|([^|]{2,40})\|', text)
+    return re.findall(r'\~([^|]{2,40})~', text)
 
 def is_russian(word):
     return bool(re.match(r'^[А-Яа-яЁё\s\-]+$', word.strip()))
@@ -130,7 +130,7 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
         await show_menu(update, context)
         return
 
-    if any(trigger in user_text for trigger in ["скажи голосом", "озвучь", "проговори", "say it", "speak it"]):
+    if any(trigger in user_text for trigger in ["скажи голосом", "озвучь", "проговори", "say it", "произнеси", "speak it"]):
         context.user_data["voice_mode"] = True
         context.user_data["system_prompt"] = generate_system_prompt(
             context.user_data.get("language", "English"),
