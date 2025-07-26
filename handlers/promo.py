@@ -1,6 +1,6 @@
 from telegram import Update
 from telegram.ext import ContextTypes
-from handlers.conversation_validated_with_promo import promo_completed
+from handlers.conversation import promo_completed
 
 from datetime import datetime
 
