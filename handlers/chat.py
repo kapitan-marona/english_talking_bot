@@ -50,27 +50,38 @@ def generate_system_prompt(interface_lang, level, style, learn_lang, voice_mode=
             style_note.get(style_key, {}).get(voice_mode) or
             f"You are in {mode} mode. You are a helpful assistant for learning {learn_lang}. Always respond in {learn_lang}. {level_note} {clarification_note}"
         )
-    ) + f" When correcting or translating, always highlight important or new words in {learn_lang} using vertical bars, like this: |word|."
+    ) + f" When correcting mistakes, translating, or explaining difficult words, always wrap the important or corrected words in vertical bars like this: |word|. " \
+        f"Do not use quotes, italics, or asterisks for this purpose — only vertical bars. " \
+        f"This is important for building the user's personal dictionary."
 
 
 def build_correction_instruction(native_lang, learn_lang, level):
+    marker_note = (
+        "Always highlight corrected or important words using vertical bars like this: |word|. "
+        "Do not use quotation marks, asterisks, or italics — only vertical bars. "
+        "This helps build the user's personal dictionary."
+    )
+
     if level == "A1-A2":
         return (
             "Если пользователь делает ошибку, вежливо укажи на неё и объясни на русском языке, как правильно. "
-            "Приводи короткие примеры и переформулировки." if native_lang == "Русский" else
-            "If the user makes a mistake, gently point it out and explain in English. Give short examples and reformulations."
+            "Приводи короткие примеры и переформулировки. "
+            "Выделяй исправленные или важные слова с помощью вертикальных черт, например: |слово|. "
+            "Не используй кавычки, курсив или звёздочки." if native_lang == "Русский" else
+            f"If the user makes a mistake, gently point it out and explain in English. Give short examples and reformulations. {marker_note}"
         )
     elif level == "B1-B2":
-        return f"If the user makes a mistake, gently correct them and explain in {learn_lang} with examples."
+        return (
+            f"If the user makes a mistake, gently correct them and explain in {learn_lang} with examples. {marker_note}"
+        )
     return ""
 
-# === Новый код ===
+
 def extract_marked_words(text):
     return re.findall(r'\|([^|]{2,40})\|', text)
 
 def is_russian(word):
     return bool(re.match(r'^[А-Яа-яЁё\s\-]+$', word.strip()))
-# =================
 
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
@@ -179,13 +190,11 @@ async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_ove
         )
         answer = completion.choices[0].message.content
 
-        # === Новый блок логики добавления в словарь ===
         dictionary = context.user_data.setdefault("dictionary", set())
         for word in extract_marked_words(answer):
             cleaned_word = word.strip()
             if not is_russian(cleaned_word):
                 dictionary.add(cleaned_word)
-        # =================================================
 
         context.user_data["chat_history"].append({"role": "assistant", "content": answer})
         context.user_data["chat_history"] = context.user_data["chat_history"][-40:]
