@@ -1,4 +1,3 @@
-
 from telegram import Update
 from telegram.ext import ContextTypes
 from handlers.conversation import promo_completed
@@ -12,7 +11,7 @@ def is_expired():
 
 VALID_PROMOCODES = {
     "друг": "Промокод принят! 🎁 Дружеский бонус активирован до 26.08!",
-    "ТЕСТОВЫЙ": "🧪 Тестовый режим включён",
+    "тестовый": "🧪 Тестовый режим включён",
     "0917": "🔓 Персональный доступ активирован! Добро пожаловать 👑"
 }
 USED_PROMOCODES = set()
@@ -25,15 +24,15 @@ async def promo(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    code = update.message.text.replace("/promo", "").strip().upper()
+    code = update.message.text.replace("/promo", "").strip().lower()
     user_id = update.effective_user.id
     promo_key = f"{user_id}:{code}"
 
-    if code not in ["0917", "ТЕСТОВЫЙ"] and is_expired():
+    if code not in ["0917", "тестовый"] and is_expired():
         await update.message.reply_text("⏰ Срок действия промокода истёк. Но не переживай — скоро будут новые!")
         return
 
-    if code not in ["0917", "ТЕСТОВЫЙ"] and promo_key in USED_PROMOCODES:
+    if code not in ["0917", "тестовый"] and promo_key in USED_PROMOCODES:
         await update.message.reply_text("⚠️ Этот промокод уже использован.")
         return
 
