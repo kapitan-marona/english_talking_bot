@@ -48,9 +48,18 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     context.user_data["voice_mode"] = False
     context.user_data["mode_button_shown"] = False
 
-    lang = context.user_data["language"]
-    await update.message.reply_text(random.choice(welcome_messages[lang]), reply_markup=ReplyKeyboardRemove())
+    # Вместо завершения диалога — ждём промокод
+    await update.message.reply_text(
+        "🎟 Перед началом — введи промокод для активации доступа:\n\n"
+        "Используйте команду: /promo БРАТСКИЙ_ЧЕК"
+    )
 
+    # ❗ Ничего не возвращаем — диалог остаётся незавершённым,
+    # а обработка команды /promo происходит вне ConversationHandler
+    return ConversationHandler.END  # ← сохраняем это, чтобы не зависнуть
+
+async def promo_completed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    await update.message.reply_text("✅ Промокод принят! Добро пожаловать 🎉")
     prompt = generate_system_prompt(
         interface_lang=context.user_data["language"],
         level=context.user_data["level"],
