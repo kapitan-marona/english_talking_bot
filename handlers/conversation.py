@@ -61,7 +61,7 @@ async def style_choice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
     return ConversationHandler.END  # ← сохраняем это, чтобы не зависнуть
 
 async def promo_completed(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    await update.message.reply_text("✅ Промокод принят! Добро пожаловать 🎉")
+    await update.message.reply_text("✅ Промокод принят! Напиши что-нибудь")
     prompt = generate_system_prompt(
         interface_lang=context.user_data["language"],
         level=context.user_data["level"],
