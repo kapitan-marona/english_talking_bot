@@ -3,7 +3,12 @@ from telegram.ext import ContextTypes
 from config import client
 from .voice import speak_and_reply
 from .keyboards import voice_mode_button, text_mode_button, learn_lang_markup
-import re
+from .chat_utils import (
+    generate_system_prompt,
+    build_correction_instruction,
+    extract_marked_words,
+    is_russian
+)
 import random
 
 async def chat(update: Update, context: ContextTypes.DEFAULT_TYPE, user_text_override: str = None):
